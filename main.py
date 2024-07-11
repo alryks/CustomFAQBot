@@ -39,8 +39,6 @@ async def main():
 
     await BOT.run()
 
-    # print(await DB.get_user_bot_usernames(22))
-
     await asyncio.Event().wait()
 
     await BOT.stop()

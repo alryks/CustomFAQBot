@@ -149,11 +149,18 @@ async def faq_ans(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     chat_id = answer["chat_id"]
     message_id = answer["message_id"]
 
-    await context.bot.copy_message(
+    delete_message_id = context.user_data.get("delete_message_id")
+    if delete_message_id is not None:
+        await context.bot.delete_message(
+            chat_id=update.effective_chat.id,
+            message_id=delete_message_id
+        )
+
+    context.user_data["delete_message_id"] = (await context.bot.copy_message(
         chat_id=update.effective_chat.id,
         from_chat_id=chat_id,
         message_id=message_id
-    )
+    )).message_id
     await update.callback_query.answer(
         text="Answer sent.",
     )
