@@ -9,7 +9,7 @@ from state import bots
 
 from config import BOT
 from handlers import start, callback, \
-    bot, bot_page, add_bot, message_handler, cancel, \
+    bot, bot_page, bot_token, message_handler, cancel, \
     bot_private, bot_users, bot_admins, bot_delete, bot_back
 
 
@@ -26,10 +26,11 @@ async def main():
 
         CallbackQueryHandler(bot, "^bots_bot"),
         CallbackQueryHandler(bot_page, "^bots_page"),
-        CallbackQueryHandler(add_bot, "add_bot"),
+        CallbackQueryHandler(bot_token, "bots_add"),
         MessageHandler(filters.ALL, message_handler),
         CallbackQueryHandler(cancel, "cancel"),
 
+        CallbackQueryHandler(bot_token, "^bot_edit"),
         CallbackQueryHandler(bot_private, "^bot_private"),
         CallbackQueryHandler(bot_users, "^bot_users"),
         CallbackQueryHandler(bot_admins, "^bot_admins"),

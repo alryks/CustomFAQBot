@@ -1,6 +1,8 @@
 from telegram import Update, User, ReplyKeyboardRemove
 from telegram.ext import ContextTypes
 
+import inspect
+
 from . import keyboards
 from keyboards import cancel
 
@@ -14,7 +16,7 @@ from misc import create_faq
 async def run_faq(update: Update, context: ContextTypes.DEFAULT_TYPE, edit=False, delete=False) -> None:
     context.user_data["state"] = State.IDLE.name
 
-    bot_obj = BotsDb.get_bot_by_token(context.bot.token)
+    bot_obj = BotsDb.get_bot_by_id(context.bot.id)
     if bot_obj is None:
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
@@ -22,8 +24,7 @@ async def run_faq(update: Update, context: ContextTypes.DEFAULT_TYPE, edit=False
         )
         return
     bot_faq = bot_obj["faq"]
-    bot_user = await context.bot.get_me()
-    text = create_faq(bot_faq, bot_user.username, bot_user.full_name)
+    text = create_faq(bot_faq, context.bot.bot.username, context.bot.bot.full_name)
 
     if delete:
         await context.bot.delete_message(
@@ -91,7 +92,13 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     elif state == State.ANSWER.name:
         delete = True
         if update.message.text != "✖️Cancel":
-            bot_obj = BotsDb.get_bot_by_token(context.bot.token)
+            bot_obj = BotsDb.get_bot_by_id(context.bot.id)
+            if bot_obj is None:
+                await context.bot.send_message(
+                    chat_id=update.effective_chat.id,
+                    text="This bot is not registered in our system.",
+                )
+                return
             question = context.user_data.get("question")
             if question is None:
                 await edit_faq(update, context, delete=delete)
@@ -126,7 +133,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 
 async def faq_ans(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    bot_obj = BotsDb.get_bot_by_token(context.bot.token)
+    bot_obj = BotsDb.get_bot_by_id(context.bot.id)
     if bot_obj is None:
         await context.bot.send_message(
             chat_id=update.effective_chat.id,

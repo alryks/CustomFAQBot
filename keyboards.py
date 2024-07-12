@@ -33,7 +33,7 @@ def bots(usernames: [(ObjectId, str)], page: int) -> InlineKeyboardMarkup:
                              InlineKeyboardButton(pages_str, callback_data=f"callback {pages_str}"),
                              InlineKeyboardButton("➡️", callback_data=f"bots_page {page + 1}")])
 
-    keyboard.append([InlineKeyboardButton("➕Add", callback_data="add_bot")])
+    keyboard.append([InlineKeyboardButton("➕Add", callback_data="bots_add")])
     keyboard.append([InlineKeyboardButton("✖️Cancel", callback_data="cancel")])
 
     return InlineKeyboardMarkup(keyboard)
@@ -41,6 +41,7 @@ def bots(usernames: [(ObjectId, str)], page: int) -> InlineKeyboardMarkup:
 
 def bot(bot_obj: dict) -> InlineKeyboardMarkup:
     keyboard = []
+    keyboard.append([InlineKeyboardButton("🔑Edit Token", callback_data=f"bot_edit {bot_obj['_id']}")])
     private = [InlineKeyboardButton(f"🔒Private: {'✅' if bot_obj['is_private'] else '❌'}", callback_data=f"bot_private {bot_obj['_id']}")]
     if bot_obj['is_private']:
         private.append(InlineKeyboardButton("👥Users", callback_data=f"bot_users {bot_obj['_id']}"))

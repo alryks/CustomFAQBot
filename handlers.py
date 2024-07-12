@@ -3,7 +3,7 @@ from telegram.ext import ContextTypes, Application
 
 from bson import ObjectId
 
-from typing import Union
+from typing import Optional
 
 import keyboards
 
@@ -12,8 +12,6 @@ from db import BotsDb
 from state import State, bots
 
 from CustomBot.custom_bot import CustomBot
-
-from misc import create_faq
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -26,8 +24,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 
-async def add_bot(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    # delete message, from where this callback was called
+async def bot_token(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.callback_query is not None:
+        if update.callback_query.data == "bots_add":
+            context.user_data["state"] = State.ADD_TOKEN.name
+        else:
+            context.user_data["state"] = State.EDIT_TOKEN.name
+            context.user_data["bot_id"] = ObjectId(update.callback_query.data.split(" ")[1])
+
     await context.bot.delete_message(
         chat_id=update.effective_chat.id,
         message_id=update.effective_message.message_id
@@ -38,40 +42,81 @@ async def add_bot(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         reply_markup=keyboards.cancel()
     )
 
-    context.user_data["state"] = State.TOKEN.name
-
 
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if context.user_data.get("state") != State.TOKEN.name:
+    if (context.user_data.get("state") not in [State.ADD_TOKEN.name, State.EDIT_TOKEN.name] or
+            update.message.text is None):
+        await update.message.reply_text("I don't understand you!")
         return
-    if update.message.text != "✖️Cancel":
-        user_bot = CustomBot(update.message.text)
-        if not await user_bot.run():
-            await context.bot.send_message(
-                chat_id=update.effective_chat.id,
-                text="Incorrect token!"
-            )
-            await add_bot(update, context)
-            return
-
-        bot_id = BotsDb.add_bot(update.message.text, update.effective_user.id)
-        if bot_id is None:
-            await context.bot.send_message(
-                chat_id=update.effective_chat.id,
-                text="Bot already exists!"
-            )
-            await add_bot(update, context)
-            return
-
-        bots[bot_id] = user_bot
-    else:
+    if update.message.text == "✖️Cancel":
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
             text="Operation canceled!",
             reply_markup=ReplyKeyboardRemove()
         )
+        if context.user_data["state"] == State.ADD_TOKEN.name:
+            await start(update, context)
+        else:
+            await bot(update, context)
+        return
 
-    await start(update, context)
+    if context.user_data["state"] == State.EDIT_TOKEN.name:
+        data = await context_data_check_bot(update, context)
+        if data is None:
+            return
+
+    user_bot = CustomBot(update.message.text)
+    if not await user_bot.run():
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="Incorrect token!"
+        )
+        await bot_token(update, context)
+        return
+
+    if context.user_data["state"] == State.EDIT_TOKEN.name:
+        bot_id = context.user_data.get("bot_id")
+        if bot_id is None:
+            await user_bot.stop()
+            await start(update, context)
+            return
+
+        bot_obj = BotsDb.get_bot(bot_id)
+        if bot_obj is None:
+            await user_bot.stop()
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text="Bot not found!"
+            )
+            await start(update, context)
+            return
+
+        if bot_obj["bot_id"] != user_bot.app.bot.id:
+            await user_bot.stop()
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text="Token doesn't match the bot!"
+            )
+            await bot_token(update, context)
+            return
+
+        BotsDb.edit_token(bot_id, update.message.text)
+        if bot_id in bots:
+            await bots[bot_id].stop()
+            bots.pop(bot_id)
+    else:
+        bot_id = BotsDb.add_bot(user_bot.app.bot.id, update.message.text, update.effective_user.id)
+        if bot_id is None:
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text="Bot already exists!"
+            )
+            await bot_token(update, context)
+            return
+        context.user_data["bot_id"] = bot_id
+
+    bots[bot_id] = user_bot
+    await bot(update, context)
 
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -99,7 +144,7 @@ async def bot_page(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.callback_query.answer("Page not found!")
 
 
-async def callback_check_bot(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Union[tuple[ObjectId, Application], None]:
+async def callback_check_bot(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optional[tuple[ObjectId, Application]]:
     bot_id = ObjectId(update.callback_query.data.split(" ")[1])
     if not BotsDb.is_admin(bot_id, update.effective_user.id):
         await update.callback_query.answer("You are not an admin!")
@@ -111,7 +156,7 @@ async def callback_check_bot(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return
 
     if bot_id not in bots:
-        await update.callback_query.answer("Bot is not running!")
+        await update.callback_query.answer("Bot not found!")
         await context.bot.delete_message(
             chat_id=update.effective_chat.id,
             message_id=update.effective_message.message_id
@@ -122,7 +167,7 @@ async def callback_check_bot(update: Update, context: ContextTypes.DEFAULT_TYPE)
     app = bots[bot_id].app
     if app is None:
         bots.pop(bot_id)
-        await update.callback_query.answer("Bot is not running!")
+        await update.callback_query.answer("Bot not found!")
         await context.bot.delete_message(
             chat_id=update.effective_chat.id,
             message_id=update.effective_message.message_id
@@ -133,7 +178,7 @@ async def callback_check_bot(update: Update, context: ContextTypes.DEFAULT_TYPE)
     return bot_id, app
 
 
-async def context_data_check_bot(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Union[tuple[ObjectId, Application], None]:
+async def context_data_check_bot(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optional[tuple[ObjectId, Application]]:
     bot_id = context.user_data.get("bot_id")
     if bot_id is None:
         await context.bot.delete_message(
@@ -158,7 +203,7 @@ async def context_data_check_bot(update: Update, context: ContextTypes.DEFAULT_T
     if bot_id not in bots:
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
-            text="Bot is not running!"
+            text="Bot not found!"
         )
         await context.bot.delete_message(
             chat_id=update.effective_chat.id,
@@ -172,7 +217,7 @@ async def context_data_check_bot(update: Update, context: ContextTypes.DEFAULT_T
         bots.pop(bot_id)
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
-            text="Bot is not running!"
+            text="Bot not found!"
         )
         await context.bot.delete_message(
             chat_id=update.effective_chat.id,
@@ -197,17 +242,24 @@ async def bot(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
     bot_id, app = data
 
-    bot_user: User = await app.bot.get_me()
+    bot_username = app.bot.bot.username
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text=f"Your @{bot_user.username}:",
+        text=f"Your @{bot_username}:",
         reply_markup=keyboards.bot(BotsDb.get_bot(bot_id))
     )
 
 
 async def bot_private(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    pass
+    data = await callback_check_bot(update, context)
+    if data is None:
+        return
+    bot_id, app = data
+
+    BotsDb.toggle_private(bot_id)
+
+    await bot(update, context)
 
 
 async def bot_users(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -219,7 +271,10 @@ async def bot_admins(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
 
 async def bot_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    bot_id = ObjectId(update.callback_query.data.split(" ")[1])
+    data = await callback_check_bot(update, context)
+    if data is None:
+        return
+    bot_id, app = data
     BotsDb.delete_bot(bot_id)
     if bot_id in bots:
         await bots[bot_id].stop()

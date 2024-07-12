@@ -1,13 +1,15 @@
 import traceback
 
-from telegram.ext import ApplicationBuilder
+from typing import Optional
+
+from telegram.ext import ApplicationBuilder, Application
 
 
 class Bot:
     def __init__(self, token: str) -> None:
         self.token = token
         self.handlers = []
-        self.app = None
+        self.app: Optional[Application] = None
 
     async def run(self) -> bool:
         try:
