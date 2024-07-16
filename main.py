@@ -8,9 +8,10 @@ from CustomBot.custom_bot import CustomBot
 from state import bots
 
 from config import BOT
-from handlers import start, callback, \
+from handlers import start, callback, accept, \
     bot, bot_page, bot_token, message_handler, cancel, \
-    bot_private, bot_users, bot_admins, bot_delete, bot_back
+    bot_private, bot_users, bot_admins, bot_delete, bot_back, \
+    user_delete, users_back, admin_delete, admins_back
 
 
 async def main():
@@ -24,6 +25,8 @@ async def main():
         CommandHandler(["start", "help"], start),
         CallbackQueryHandler(callback, "^callback"),
 
+        CallbackQueryHandler(accept, "^accept"),
+
         CallbackQueryHandler(bot, "^bots_bot"),
         CallbackQueryHandler(bot_page, "^bots_page"),
         CallbackQueryHandler(bot_token, "bots_add"),
@@ -36,6 +39,11 @@ async def main():
         CallbackQueryHandler(bot_admins, "^bot_admins"),
         CallbackQueryHandler(bot_delete, "^bot_delete"),
         CallbackQueryHandler(bot_back, "bot_back"),
+
+        CallbackQueryHandler(user_delete, "^user_delete"),
+        CallbackQueryHandler(users_back, "^users_back"),
+        CallbackQueryHandler(admin_delete, "^admin_delete"),
+        CallbackQueryHandler(admins_back, "^admins_back"),
     ]
 
     await BOT.run()

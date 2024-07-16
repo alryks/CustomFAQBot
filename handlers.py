@@ -1,5 +1,8 @@
+import telegram.ext
 from telegram import Update, ReplyKeyboardRemove, User
 from telegram.ext import ContextTypes, Application
+
+from telegram import ChatFullInfo
 
 from bson import ObjectId
 
@@ -57,6 +60,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         if context.user_data["state"] == State.ADD_TOKEN.name:
             await start(update, context)
         else:
+            context.user_data["state"] = State.IDLE.name
             await bot(update, context)
         return
 
@@ -116,12 +120,11 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         context.user_data["bot_id"] = bot_id
 
     bots[bot_id] = user_bot
+    context.user_data["state"] = State.IDLE.name
     await bot(update, context)
 
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    context.user_data["state"] = State.IDLE.name
-
     await context.bot.delete_message(
         chat_id=update.effective_chat.id,
         message_id=update.effective_message.message_id
@@ -229,6 +232,26 @@ async def context_data_check_bot(update: Update, context: ContextTypes.DEFAULT_T
     return bot_id, app
 
 
+async def accept(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    data = await callback_check_bot(update, context)
+    if data is None:
+        return
+    bot_id, app = data
+
+    user_id = int(update.callback_query.data.split(" ")[2])
+    access_type = update.callback_query.data.split(" ")[0].split("_")[1]
+
+    if access_type == "admin":
+        BotsDb.add_admin(bot_id, user_id)
+    else:
+        BotsDb.add_user(bot_id, user_id)
+
+    await context.bot.delete_message(
+        chat_id=update.effective_chat.id,
+        message_id=update.effective_message.message_id
+    )
+
+
 async def bot(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await context.bot.delete_message(
         chat_id=update.effective_chat.id,
@@ -263,11 +286,43 @@ async def bot_private(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
 
 async def bot_users(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    pass
+    data = await callback_check_bot(update, context)
+    if data is None:
+        return
+    bot_id, app = data
+
+    username = app.bot.bot.username
+
+    await context.bot.delete_message(
+        chat_id=update.effective_chat.id,
+        message_id=update.effective_message.message_id
+    )
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=f"@{username} users:",
+        reply_markup=await keyboards.users(BotsDb.get_bot(bot_id), update.effective_user.id, app.bot)
+    )
 
 
 async def bot_admins(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    pass
+    data = await callback_check_bot(update, context)
+    if data is None:
+        return
+    bot_id, app = data
+
+    username = app.bot.bot.username
+
+    await context.bot.delete_message(
+        chat_id=update.effective_chat.id,
+        message_id=update.effective_message.message_id
+    )
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=f"@{username} admins:",
+        reply_markup=await keyboards.admins(BotsDb.get_bot(bot_id), update.effective_user.id, app.bot)
+    )
 
 
 async def bot_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -293,3 +348,37 @@ async def bot_back(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         message_id=update.effective_message.message_id
     )
     await start(update, context)
+
+
+async def user_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    data = await callback_check_bot(update, context)
+    if data is None:
+        return
+    bot_id, app = data
+
+    user_id = int(update.callback_query.data.split(" ")[2])
+
+    BotsDb.delete_user(bot_id, user_id)
+
+    await bot_users(update, context)
+
+
+async def users_back(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await bot(update, context)
+
+
+async def admin_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    data = await callback_check_bot(update, context)
+    if data is None:
+        return
+    bot_id, app = data
+
+    admin_id = int(update.callback_query.data.split(" ")[2])
+
+    BotsDb.delete_admin(bot_id, admin_id)
+
+    await bot_admins(update, context)
+
+
+async def admins_back(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await bot(update, context)

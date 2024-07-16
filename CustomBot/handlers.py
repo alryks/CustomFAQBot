@@ -1,28 +1,83 @@
 from telegram import Update, User, ReplyKeyboardRemove
 from telegram.ext import ContextTypes
 
-import inspect
+from config import BOT
 
 from . import keyboards
 from keyboards import cancel
 
 from db import BotsDb
 
-from state import State
+from .state import State
 
 from misc import create_faq
+
+
+async def check_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    if BotsDb.is_user(BotsDb.get_bot_by_id(context.bot.id)["_id"], update.effective_user.id):
+        return True
+
+    await context.bot.delete_message(
+        chat_id=update.effective_chat.id,
+        message_id=update.effective_message.message_id
+    )
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="You are not bot user! Requesting access...",
+    )
+
+    name = update.effective_user.full_name + (
+        f" @{update.effective_user.username}" if update.effective_user.username else "")
+    bot_obj = BotsDb.get_bot_by_id(context.bot.id)
+
+    for admin in bot_obj["admins"]:
+        await BOT.app.bot.send_message(
+            chat_id=admin,
+            text=f"User <b>{name}</b> requested access to @{context.bot.bot.username}",
+            parse_mode="HTML",
+            reply_markup=keyboards.accept_deny(bot_obj, update.effective_user.id)
+        )
+
+    return False
+
+
+async def check_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    if BotsDb.is_admin(BotsDb.get_bot_by_id(context.bot.id)["_id"], update.effective_user.id):
+        return True
+
+    await context.bot.delete_message(
+        chat_id=update.effective_chat.id,
+        message_id=update.effective_message.message_id
+    )
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="You are not bot admin! Requesting access...",
+    )
+
+    name = update.effective_user.full_name + (
+        f" @{update.effective_user.username}" if update.effective_user.username else "")
+    bot_obj = BotsDb.get_bot_by_id(context.bot.id)
+
+    for admin in bot_obj["admins"]:
+        await BOT.app.bot.send_message(
+            chat_id=admin,
+            text=f"User <b>{name}</b> requested <b>admin rights</b> to @{context.bot.bot.username}",
+            parse_mode="HTML",
+            reply_markup=keyboards.accept_deny(bot_obj, update.effective_user.id, is_admin=True)
+        )
+
+    return False
 
 
 async def run_faq(update: Update, context: ContextTypes.DEFAULT_TYPE, edit=False, delete=False) -> None:
     context.user_data["state"] = State.IDLE.name
 
-    bot_obj = BotsDb.get_bot_by_id(context.bot.id)
-    if bot_obj is None:
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text="This bot is not registered in our system.",
-        )
+    if not await check_user(update, context):
         return
+
+    bot_obj = BotsDb.get_bot_by_id(context.bot.id)
     bot_faq = bot_obj["faq"]
     text = create_faq(bot_faq, context.bot.bot.username, context.bot.bot.full_name)
 
@@ -40,11 +95,16 @@ async def run_faq(update: Update, context: ContextTypes.DEFAULT_TYPE, edit=False
     )
 
 
-async def edit_faq(update: Update, context: ContextTypes.DEFAULT_TYPE, delete=True) -> None:
-    await run_faq(update, context, edit=True, delete=delete)
+async def edit_faq(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not await check_admin(update, context):
+        return
+    await run_faq(update, context, edit=True)
 
 
 async def faq_add(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not await check_admin(update, context):
+        return
+
     await context.bot.delete_message(
         chat_id=update.effective_chat.id,
         message_id=update.effective_message.message_id
@@ -56,90 +116,82 @@ async def faq_add(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         reply_markup=cancel()
     )
 
-    context.user_data["state"] = State.QUESTION.name
+    context.user_data["state"] = State.ADD_QUESTION.name
+
+
+async def faq_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await context.bot.delete_message(
+        chat_id=update.effective_chat.id,
+        message_id=update.effective_message.message_id
+    )
 
 
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    state = context.user_data.get("state")
-    if state == State.QUESTION.name:
-        if update.message.text != "✖️Cancel":
-            question = update.message.text
-            if question is None or question.strip() == "":
-                await context.bot.send_message(
-                    chat_id=update.effective_chat.id,
-                    text="Invalid question!"
-                )
-                await faq_add(update, context)
-                return
-            else:
-                context.user_data["state"] = State.ANSWER.name
-
-                context.user_data["question"] = question
-
-                await context.bot.send_message(
-                    chat_id=update.effective_chat.id,
-                    text="Send answer:",
-                    reply_markup=cancel()
-                )
-        else:
-            await context.bot.send_message(
-                chat_id=update.effective_chat.id,
-                text="Operation canceled!",
-                reply_markup=ReplyKeyboardRemove()
-            )
-
-            await edit_faq(update, context)
-    elif state == State.ANSWER.name:
-        delete = True
-        if update.message.text != "✖️Cancel":
-            bot_obj = BotsDb.get_bot_by_id(context.bot.id)
-            if bot_obj is None:
-                await context.bot.send_message(
-                    chat_id=update.effective_chat.id,
-                    text="This bot is not registered in our system.",
-                )
-                return
-            question = context.user_data.get("question")
-            if question is None:
-                await edit_faq(update, context, delete=delete)
-
-            chat_id = update.effective_chat.id
-            message_id = update.effective_message.message_id
-
-            context.user_data["state"] = State.IDLE.name
-
-            BotsDb.add_faq(bot_obj["_id"], question, chat_id, message_id)
-
-            await context.bot.send_message(
-                chat_id=update.effective_chat.id,
-                text="Question added!",
-                reply_markup=ReplyKeyboardRemove()
-            )
-            delete = False
-        else:
-            await context.bot.send_message(
-                chat_id=update.effective_chat.id,
-                text="Operation canceled!",
-                reply_markup=ReplyKeyboardRemove()
-            )
-
-        await edit_faq(update, context, delete=delete)
-    else:
-        context.user_data["state"] = State.IDLE.name
+    if (context.user_data.get("state") not in [State.ADD_QUESTION.name,
+                                               State.EDIT_QUESTION.name,
+                                               State.ADD_ANSWER.name,
+                                               State.EDIT_ANSWER.name]):
+        await update.message.reply_text("I don't understand you!")
+        return
+    if update.message.text == "✖️Cancel":
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
-            text="I don't understand you!",
+            text="Operation canceled!",
+            reply_markup=ReplyKeyboardRemove()
         )
+        context.user_data["state"] = State.IDLE.name
+        await edit_faq(update, context)
+        return
+
+    if not await check_admin(update, context):
+        return
+
+    if context.user_data["state"] in [State.ADD_QUESTION.name, State.EDIT_QUESTION.name]:
+        question = update.message.text
+        if question is None or question.strip() == "":
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text="Invalid question!"
+            )
+            await faq_add(update, context)
+            return
+
+        if context.user_data["state"] == State.ADD_QUESTION.name:
+            context.user_data["state"] = State.ADD_ANSWER.name
+            context.user_data["question"] = question.strip()
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text="Send answer:",
+                reply_markup=cancel()
+            )
+            context.user_data["state"] = State.ADD_ANSWER.name
+            await edit_faq(update, context)
+        else:
+            pass
+    elif context.user_data["state"] == State.ADD_ANSWER.name:
+        bot_obj = BotsDb.get_bot_by_id(context.bot.id)
+        question = context.user_data.get("question")
+        if question is None:
+            await run_faq(update, context, edit=True, delete=True)
+
+        chat_id = update.effective_chat.id
+        message_id = update.effective_message.message_id
+
+        BotsDb.add_faq(bot_obj["_id"], question, chat_id, message_id)
+
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="Question added!",
+            reply_markup=ReplyKeyboardRemove()
+        )
+
+        await edit_faq(update, context)
+    else:
+        pass
 
 
 async def faq_ans(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     bot_obj = BotsDb.get_bot_by_id(context.bot.id)
-    if bot_obj is None:
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text="This bot is not registered in our system.",
-        )
-        return
     number = int(update.callback_query.data.split(" ")[2])
     bot_faq = bot_obj["faq"]
     if number >= len(bot_faq):
@@ -170,11 +222,4 @@ async def faq_ans(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )).message_id
     await update.callback_query.answer(
         text="Answer sent.",
-    )
-
-
-async def faq_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await context.bot.delete_message(
-        chat_id=update.effective_chat.id,
-        message_id=update.effective_message.message_id
     )

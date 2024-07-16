@@ -3,7 +3,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from config import COLS_PER_PAGE
 
 
-def faq(bot_obj, add=False) -> InlineKeyboardMarkup:
+def faq(bot_obj: dict, add: bool = False) -> InlineKeyboardMarkup:
     keyboard = []
     faq = bot_obj["faq"]
     bot_id = bot_obj["_id"]
@@ -20,3 +20,10 @@ def faq(bot_obj, add=False) -> InlineKeyboardMarkup:
     keyboard.append([InlineKeyboardButton("✖️Cancel", callback_data="cancel")])
 
     return InlineKeyboardMarkup(keyboard)
+
+
+def accept_deny(bot_obj: dict, user_id: int, is_admin=False) -> InlineKeyboardMarkup:
+    access_type = "admin" if is_admin else "user"
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("✅", callback_data=f"accept_{access_type} {bot_obj['_id']} {user_id}"), InlineKeyboardButton("❌", callback_data="cancel")]
+    ])

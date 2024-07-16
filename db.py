@@ -17,7 +17,27 @@ class BotsDb:
 
     @classmethod
     def is_admin(cls, bot_id: ObjectId, user_id: int) -> bool:
-        return cls.bots.find_one({"_id": bot_id, "admins": user_id}) is not None
+        bot = cls.bots.find_one({"_id": bot_id})
+        if bot and user_id in bot.get("admins", []):
+            return True
+        return False
+
+    @classmethod
+    def add_admin(cls, bot_id: ObjectId, user_id: int) -> None:
+        cls.bots.update_one({"_id": bot_id}, {"$addToSet": {"admins": user_id}})
+
+    @classmethod
+    def is_user(cls, bot_id: ObjectId, user_id: int) -> bool:
+        bot = cls.bots.find_one({"_id": bot_id})
+        if bot and (not bot.get("is_private", False) or
+                    user_id in bot.get("users", []) or
+                    user_id in bot.get("admins", [])):
+            return True
+        return False
+
+    @classmethod
+    def add_user(cls, bot_id: ObjectId, user_id: int) -> None:
+        cls.bots.update_one({"_id": bot_id}, {"$addToSet": {"users": user_id}})
 
     @classmethod
     def get_bot(cls, bot_id: ObjectId) -> dict:
@@ -55,7 +75,7 @@ class BotsDb:
                                         "bot_token": bot_token,
                                         "admins": [admin],
                                         "is_private": False,
-                                        "allowed_users": [],
+                                        "users": [],
                                         "faq": [],
                                         }).inserted_id
         except DuplicateKeyError:
@@ -79,3 +99,11 @@ class BotsDb:
     @classmethod
     def add_faq(cls, bot_id: ObjectId, question: str, chat_id: int, message_id: int) -> None:
         cls.bots.update_one({"_id": bot_id}, {"$push": {"faq": {"question": question, "answer": {"chat_id": chat_id, "message_id": message_id}}}})
+
+    @classmethod
+    def delete_user(cls, bot_id: ObjectId, user_id: int) -> None:
+        cls.bots.update_one({"_id": bot_id}, {"$pull": {"users": user_id}})
+
+    @classmethod
+    def delete_admin(cls, bot_id: ObjectId, admin_id: int) -> None:
+        cls.bots.update_one({"_id": bot_id}, {"$pull": {"admins": admin_id}})
