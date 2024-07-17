@@ -1,8 +1,5 @@
-import telegram.ext
 from telegram import Update
 from telegram.ext import ContextTypes, Application
-
-from telegram import ChatFullInfo
 
 from bson import ObjectId
 
@@ -17,13 +14,13 @@ from state import State, bots
 from CustomBot.custom_bot import CustomBot
 
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE, page=1) -> None:
     context.user_data["state"] = State.IDLE.name
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text="Your FAQs:",
-        reply_markup=keyboards.bots(await BotsDb.get_user_bot_usernames(update.effective_user.id), 1)
+        reply_markup=keyboards.bots(await BotsDb.get_user_bot_usernames(update.effective_user.id), page)
     )
 
 
@@ -127,15 +124,12 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def bot_page(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    try:
-        await context.bot.edit_message_reply_markup(
-            chat_id=update.effective_chat.id,
-            message_id=update.effective_message.message_id,
-            reply_markup=keyboards.bots(await BotsDb.get_user_bot_usernames(update.effective_user.id),
-                                       int(update.callback_query.data.split(" ")[1]))
-        )
-    except:
-        await update.callback_query.answer("Page not found!")
+    context.bot.delete_message(
+        chat_id=update.effective_chat.id,
+        message_id=update.effective_message.message_id
+    )
+
+    await start(update, context, int(update.callback_query.data.split(" ")[1]))
 
 
 async def callback_check_bot(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optional[tuple[ObjectId, Application]]:
