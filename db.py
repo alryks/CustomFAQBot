@@ -97,8 +97,25 @@ class BotsDb:
         cls.bots.delete_one({"_id": bot_id})
 
     @classmethod
-    def add_faq(cls, bot_id: ObjectId, question: str, chat_id: int, message_id: int) -> None:
-        cls.bots.update_one({"_id": bot_id}, {"$push": {"faq": {"question": question, "answer": {"chat_id": chat_id, "message_id": message_id}}}})
+    def add_question(cls, bot_id: ObjectId, question: str, answers: list[dict]) -> None:
+        cls.bots.update_one({"_id": bot_id}, {"$push": {"faq": {"_id": ObjectId(), "question": question, "answers": answers}}})
+
+    @classmethod
+    def edit_question(cls, bot_id: ObjectId, question_id: ObjectId, question: str, answers: list[dict]) -> None:
+        cls.bots.update_one({"_id": bot_id, "faq._id": question_id}, {"$set": {"faq.$.question": question, "faq.$.answers": answers}})
+
+    @classmethod
+    def delete_question(cls, bot_id: ObjectId, question_id: ObjectId) -> None:
+        cls.bots.update_one({"_id": bot_id}, {"$pull": {"faq": {"_id": question_id}}})
+
+    @classmethod
+    def get_question(cls, bot_id: ObjectId, question_id: ObjectId) -> Optional[dict]:
+        bot_obj = cls.bots.find_one({"_id": bot_id, "faq._id": question_id}, {"faq.$": 1})
+        if bot_obj is None:
+            return
+        if bot_obj["faq"]:
+            return bot_obj["faq"][0]
+
 
     @classmethod
     def delete_user(cls, bot_id: ObjectId, user_id: int) -> None:

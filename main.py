@@ -3,12 +3,14 @@ import asyncio
 from telegram.ext import MessageHandler, CommandHandler, CallbackQueryHandler
 from telegram.ext import filters
 
+from misc import callback
+
 from db import BotsDb
 from CustomBot.custom_bot import CustomBot
 from state import bots
 
 from config import BOT
-from handlers import start, callback, accept, \
+from handlers import start, accept, \
     bot, bot_page, bot_token, message_handler, cancel, \
     bot_private, bot_users, bot_admins, bot_delete, bot_back, \
     user_delete, users_back, admin_delete, admins_back
@@ -30,7 +32,6 @@ async def main():
         CallbackQueryHandler(bot, "^bots_bot"),
         CallbackQueryHandler(bot_page, "^bots_page"),
         CallbackQueryHandler(bot_token, "bots_add"),
-        MessageHandler(filters.ALL, message_handler),
         CallbackQueryHandler(cancel, "cancel"),
 
         CallbackQueryHandler(bot_token, "^bot_edit"),
@@ -44,6 +45,8 @@ async def main():
         CallbackQueryHandler(users_back, "^users_back"),
         CallbackQueryHandler(admin_delete, "^admin_delete"),
         CallbackQueryHandler(admins_back, "^admins_back"),
+
+        MessageHandler(filters.ALL, message_handler)
     ]
 
     await BOT.run()

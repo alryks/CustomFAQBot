@@ -1,25 +1,31 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import ReplyKeyboardMarkup
 
-from config import COLS_PER_PAGE
+from misc import pagination
 
 
-def faq(bot_obj: dict, add: bool = False) -> InlineKeyboardMarkup:
-    keyboard = []
+def faq(bot_obj: dict, edit: bool = False, page: int = 1) -> InlineKeyboardMarkup:
+    question_type = "edit" if edit else "ans"
+    buttons = []
     faq = bot_obj["faq"]
-    bot_id = bot_obj["_id"]
-    if len(faq) > 0:
-        for i in range(len(faq)):
-            button = InlineKeyboardButton(f"{i + 1}", callback_data=f"faq_ans {bot_id} {i}")
-            if i % COLS_PER_PAGE == 0:
-                keyboard.append([button])
-            else:
-                keyboard[-1].append(button)
+    for i in range(len(faq)):
+        button = InlineKeyboardButton(f"{i + 1}", callback_data=f"faq_{question_type} {faq[i]['_id']}")
+        buttons.append(button)
 
-    if add:
-        keyboard.append([InlineKeyboardButton("➕Add Question", callback_data=f"faq_add {bot_id}")])
+    keyboard = pagination(buttons, page, f"faq_{question_type}",
+                          horizontal=True, additional_buttons=1 + int(edit))
+
+    if edit:
+        keyboard.append([InlineKeyboardButton("➕Add Question", callback_data=f"faq_add")])
     keyboard.append([InlineKeyboardButton("✖️Cancel", callback_data="cancel")])
 
     return InlineKeyboardMarkup(keyboard)
+
+
+def stop_answer() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup([[f"🛑Stop answering"], ["❌Cancel"]],
+                               resize_keyboard=True,
+                               one_time_keyboard=True)
 
 
 def accept_deny(bot_obj: dict, user_id: int, is_admin=False) -> InlineKeyboardMarkup:

@@ -11,7 +11,7 @@ BOT_TOKEN = config["BOT_TOKEN"]
 BOT = Bot(BOT_TOKEN)
 
 ROWS_PER_PAGE = 10
-COLS_PER_PAGE = 4
+COLS_PER_PAGE = 5
 
 # Database
 DB_USER = config["DB_USER"]

@@ -1,5 +1,5 @@
 import telegram.ext
-from telegram import Update, ReplyKeyboardRemove, User
+from telegram import Update
 from telegram.ext import ContextTypes, Application
 
 from telegram import ChatFullInfo
@@ -52,11 +52,6 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await update.message.reply_text("I don't understand you!")
         return
     if update.message.text == "✖️Cancel":
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text="Operation canceled!",
-            reply_markup=ReplyKeyboardRemove()
-        )
         if context.user_data["state"] == State.ADD_TOKEN.name:
             await start(update, context)
         else:
@@ -129,10 +124,6 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         chat_id=update.effective_chat.id,
         message_id=update.effective_message.message_id
     )
-
-
-async def callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.callback_query.answer(" ".join(update.callback_query.data.split(" ")[1:]))
 
 
 async def bot_page(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -301,7 +292,7 @@ async def bot_users(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=f"@{username} users:",
-        reply_markup=await keyboards.users(BotsDb.get_bot(bot_id), update.effective_user.id, app.bot)
+        reply_markup=await keyboards.users(BotsDb.get_bot(bot_id), app.bot)
     )
 
 
