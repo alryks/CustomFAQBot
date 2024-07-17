@@ -110,6 +110,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     context.user_data["search"] = None
     await run_faq(update, context)
 
+
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if (context.user_data.get("state") in [State.ADD_QUESTION.name,
                                            State.EDIT_QUESTION.name,
@@ -320,6 +321,12 @@ async def question_edit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     context.user_data["question_id"] = ObjectId(update.callback_query.data.split(" ")[1])
     context.user_data["state"] = State.EDIT_QUESTION.name
+
+    await context.bot.delete_message(
+        chat_id=update.effective_chat.id,
+        message_id=update.effective_message.message_id
+    )
+
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text="Send new question:",
@@ -340,7 +347,7 @@ async def question_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         text="Question deleted!",
     )
 
-    await edit_faq(update, context)
+    await run_faq(update, context, edit=True, delete=True)
 
 
 async def question_back(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
