@@ -1,3 +1,4 @@
+from telegram import Update
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram import ReplyKeyboardMarkup
 
@@ -5,8 +6,10 @@ from bson import ObjectId
 
 from misc import pagination
 
+from lang import Languages
 
-def faq(bot_faq: list, edit: bool = False, page: int = 1) -> InlineKeyboardMarkup:
+
+def faq(bot_faq: list, update: Update, edit: bool = False, page: int = 1) -> InlineKeyboardMarkup:
     question_type = "edit" if edit else "ans"
     buttons = []
     for i in range(len(bot_faq)):
@@ -17,23 +20,23 @@ def faq(bot_faq: list, edit: bool = False, page: int = 1) -> InlineKeyboardMarku
                           horizontal=True, additional_buttons=1 + int(edit))
 
     if edit:
-        keyboard.append([InlineKeyboardButton("➕Add Question", callback_data=f"faq_add")])
-    keyboard.append([InlineKeyboardButton("✖️Cancel", callback_data="cancel")])
+        keyboard.append([InlineKeyboardButton(Languages.kbd("add_question", update), callback_data=f"faq_add")])
+    keyboard.append([InlineKeyboardButton(Languages.kbd("cancel", update), callback_data="cancel")])
 
     return InlineKeyboardMarkup(keyboard)
 
 
-def stop_answer() -> ReplyKeyboardMarkup:
-    return ReplyKeyboardMarkup([[f"🛑Stop answering"], ["✖️Cancel"]],
+def stop_answer(update: Update) -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup([[Languages.btn("stop_answer", update)], [Languages.btn("cancel", update)]],
                                resize_keyboard=True,
                                one_time_keyboard=True)
 
 
-def faq_edit(question_id: ObjectId) -> InlineKeyboardMarkup:
+def faq_edit(question_id: ObjectId, update: Update) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("✏️Edit", callback_data=f"question_edit {question_id}"),
-         InlineKeyboardButton("❌Delete", callback_data=f"question_delete {question_id}")],
-        [InlineKeyboardButton("🔙Back", callback_data="question_back")]
+        [InlineKeyboardButton(Languages.kbd("edit", update), callback_data=f"question_edit {question_id}"),
+         InlineKeyboardButton(Languages.kbd("delete", update), callback_data=f"question_delete {question_id}")],
+        [InlineKeyboardButton(Languages.kbd("back", update), callback_data="question_back")]
     ])
 
 

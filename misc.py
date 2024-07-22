@@ -5,15 +5,17 @@ from telegram import InlineKeyboardButton
 
 from config import ROWS_PER_PAGE, COLS_PER_PAGE
 
+from lang import Languages
+
 
 async def callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.callback_query.answer(" ".join(update.callback_query.data.split(" ")[1:]))
 
 
-def create_faq(faq: list, bot_username: str, bot_full_name: str, page: int = 1) -> str:
+def create_faq(faq: list, bot_username: str, bot_full_name: str, update: Update, page: int = 1) -> str:
     n = len(faq)
     if n == 0:
-        text = f"FAQ for @{bot_username} is empty!"
+        text = Languages.msg("no_faq", update).format(bot_username=bot_username)
     else:
         max_rows = min(n, COLS_PER_PAGE)
         max_pages = (n + max_rows - 1) // max_rows
@@ -21,7 +23,7 @@ def create_faq(faq: list, bot_username: str, bot_full_name: str, page: int = 1) 
         page = max(page, 1)
         page = min(page, max_pages)
 
-        text = f"{bot_full_name}:"
+        text = Languages.msg("faq", update).format(bot_username=bot_username)
         for i in range((page - 1) * max_rows, min(page * max_rows, n)):
             text += f"\n\n<b>{i + 1}.</b> {faq[i]['question']}"
 

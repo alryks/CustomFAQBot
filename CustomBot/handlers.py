@@ -3,7 +3,7 @@ from telegram.ext import ContextTypes
 
 from bson import ObjectId
 
-from config import BOT
+from config import BOT, PARSE_MODE
 
 from . import keyboards
 from keyboards import cancel
@@ -13,6 +13,8 @@ from db import BotsDb
 from .state import State
 
 from misc import create_faq, filter_faq
+
+from lang import Languages
 
 
 async def check_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
@@ -26,7 +28,8 @@ async def check_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text="You are not bot user! Requesting access...",
+        text=Languages.msg("not_user_request", update),
+        parse_mode=PARSE_MODE,
     )
 
     name = update.effective_user.full_name + (f" @{update.effective_user.username}" if update.effective_user.username else "")
@@ -35,9 +38,9 @@ async def check_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool
     for admin in bot_obj["admins"]:
         await BOT.app.bot.send_message(
             chat_id=admin,
-            text=f"User <b>{name}</b> requested access to @{context.bot.bot.username}",
-            parse_mode="HTML",
-            reply_markup=keyboards.accept_deny(bot_obj, update.effective_user.id)
+            text=Languages.msg("request_user", update).format(name=name, bot_name=context.bot.bot.username),
+            reply_markup=keyboards.accept_deny(bot_obj, update.effective_user.id),
+            parse_mode=PARSE_MODE,
         )
 
     return False
@@ -54,7 +57,8 @@ async def check_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> boo
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text="You are not bot admin! Requesting access...",
+        text=Languages.msg("not_admin_request", update),
+        parse_mode=PARSE_MODE,
     )
 
     name = update.effective_user.full_name + (f" @{update.effective_user.username}" if update.effective_user.username else "")
@@ -63,9 +67,9 @@ async def check_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> boo
     for admin in bot_obj["admins"]:
         await BOT.app.bot.send_message(
             chat_id=admin,
-            text=f"User <b>{name}</b> requested <b>admin rights</b> to @{context.bot.bot.username}",
-            parse_mode="HTML",
-            reply_markup=keyboards.accept_deny(bot_obj, update.effective_user.id, is_admin=True)
+            text=Languages.msg("request_admin", update).format(name=name, bot_name=context.bot.bot.username),
+            reply_markup=keyboards.accept_deny(bot_obj, update.effective_user.id, is_admin=True),
+            parse_mode=PARSE_MODE,
         )
 
     return False
@@ -84,7 +88,7 @@ async def run_faq(update: Update, context: ContextTypes.DEFAULT_TYPE, edit=False
     bot_faq = filter_faq(BotsDb.get_bot_by_id(context.bot.id)["faq"], search)
     bot_faq = [faq for faq in bot_faq if search.lower() in faq["question"].lower()]
 
-    text = create_faq(bot_faq, context.bot.bot.username, context.bot.bot.full_name, page)
+    text = create_faq(bot_faq, context.bot.bot.username, context.bot.bot.full_name, update, page)
 
     if delete:
         await context.bot.delete_message(
@@ -95,8 +99,8 @@ async def run_faq(update: Update, context: ContextTypes.DEFAULT_TYPE, edit=False
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=text,
-        parse_mode="HTML",
-        reply_markup=keyboards.faq(bot_faq, edit, page),
+        reply_markup=keyboards.faq(bot_faq, update, edit, page),
+        parse_mode=PARSE_MODE,
     )
 
 
@@ -111,12 +115,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await run_faq(update, context)
 
 
+async def edit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    context.user_data["search"] = None
+    await edit_faq(update, context)
+
+
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if (context.user_data.get("state") in [State.ADD_QUESTION.name,
                                            State.EDIT_QUESTION.name,
                                            State.ADD_ANSWER.name,
                                            State.EDIT_ANSWER.name] and
-            update.message.text == "✖️Cancel"):
+            update.message.text == Languages.btn("cancel", update)):
         context.user_data["question"] = None
         context.user_data["answers"] = None
         context.user_data["search"] = None
@@ -130,7 +139,8 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             if question is None or question.strip() == "":
                 await context.bot.send_message(
                     chat_id=update.effective_chat.id,
-                    text="Invalid question!"
+                    text=Languages.msg("invalid_question", update),
+                    parse_mode=PARSE_MODE,
                 )
                 await faq_add(update, context)
                 return
@@ -139,8 +149,9 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             context.user_data["question"] = question.strip()
             await context.bot.send_message(
                 chat_id=update.effective_chat.id,
-                text="Send answer:",
-                reply_markup=keyboards.stop_answer()
+                text=Languages.msg("send_answer", update),
+                reply_markup=keyboards.stop_answer(update),
+                parse_mode=PARSE_MODE,
             )
             context.user_data["answers"] = None
             return
@@ -151,7 +162,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                 await run_faq(update, context, edit=True, delete=True)
                 return
 
-            if update.message.text == "🛑Stop answering":
+            if update.message.text == Languages.btn("stop_answer", update):
                 answers = context.user_data.get("answers")
                 if answers is None:
                     context.user_data["question"] = None
@@ -162,17 +173,18 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                 bot_obj = BotsDb.get_bot_by_id(context.bot.id)
                 if context.user_data["state"] == State.ADD_ANSWER.name:
                     BotsDb.add_question(bot_obj["_id"], question, answers)
-                    text = "Question added!"
+                    text = Languages.msg("question_added", update)
                 else:
                     if context.user_data.get("question_id") is None:
                         await run_faq(update, context, edit=True, delete=True)
                         return
                     BotsDb.edit_question(bot_obj["_id"], context.user_data["question_id"], question, answers)
-                    text = "Question edited!"
+                    text = Languages.msg("question_edited", update)
 
                 await context.bot.send_message(
                     chat_id=update.effective_chat.id,
                     text=text,
+                    parse_mode=PARSE_MODE,
                 )
 
                 await edit_faq(update, context)
@@ -188,8 +200,9 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
             await context.bot.send_message(
                 chat_id=update.effective_chat.id,
-                text="Send next answer:",
-                reply_markup=keyboards.stop_answer()
+                text=Languages.msg("send_next_answer", update),
+                reply_markup=keyboards.stop_answer(update),
+                parse_mode=PARSE_MODE,
             )
 
             return
@@ -235,7 +248,7 @@ async def faq_ans(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
         context.user_data["delete_message_ids"].append(message.message_id)
     await update.callback_query.answer(
-        text="Answer sent.",
+        text=Languages.msg("answer_sent", update),
     )
 
 
@@ -264,12 +277,14 @@ async def faq_edit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text=f"Current question:\n\n{question['question']}",
+        text=Languages.msg("current_question", update).format(question=question["question"]),
+        parse_mode=PARSE_MODE,
     )
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text="Current answers:",
+        text=Languages.msg("current_answers", update),
+        parse_mode=PARSE_MODE,
     )
 
     for answer in question["answers"]:
@@ -281,8 +296,9 @@ async def faq_edit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text="What do you want to do with this question?",
-        reply_markup=keyboards.faq_edit(question["_id"])
+        text=Languages.msg("question_action", update),
+        reply_markup=keyboards.faq_edit(question["_id"], update),
+        parse_mode=PARSE_MODE,
     )
 
 
@@ -301,8 +317,9 @@ async def faq_add(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text="Send question:",
-        reply_markup=cancel()
+        text=Languages.msg("send_question", update),
+        reply_markup=cancel(update),
+        parse_mode=PARSE_MODE,
     )
 
     context.user_data["state"] = State.ADD_QUESTION.name
@@ -329,8 +346,9 @@ async def question_edit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text="Send new question:",
-        reply_markup=cancel()
+        text=Languages.msg("send_new_question", update),
+        reply_markup=cancel(update),
+        parse_mode=PARSE_MODE,
     )
 
 
@@ -344,7 +362,8 @@ async def question_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text="Question deleted!",
+        text=Languages.msg("question_deleted", update),
+        parse_mode=PARSE_MODE,
     )
 
     await run_faq(update, context, edit=True, delete=True)

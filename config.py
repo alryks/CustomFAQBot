@@ -10,6 +10,8 @@ config = dotenv_values(".env")
 BOT_TOKEN = config["BOT_TOKEN"]
 BOT = Bot(BOT_TOKEN)
 
+PARSE_MODE = config["PARSE_MODE"]
+
 ROWS_PER_PAGE = 10
 COLS_PER_PAGE = 5
 

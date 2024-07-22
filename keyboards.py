@@ -1,3 +1,4 @@
+from telegram import Update
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram import ReplyKeyboardMarkup
 
@@ -7,41 +8,43 @@ from bson import ObjectId
 
 from misc import pagination
 
+from lang import Languages
 
-def cancel():
-    return ReplyKeyboardMarkup([["✖️Cancel"]],
+
+def cancel(update: Update) -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup([[Languages.btn("cancel", update)]],
                                resize_keyboard=True,
                                one_time_keyboard=True)
 
 
-def bots(usernames: [(ObjectId, str)], page: int) -> InlineKeyboardMarkup:
+def bots(usernames: [(ObjectId, str)], page: int, update: Update) -> InlineKeyboardMarkup:
     buttons = []
     for username in usernames:
         buttons.append(InlineKeyboardButton(f"@{username[1]}", callback_data=f"bots_bot {username[0]}"))
 
     keyboard = pagination(buttons, page, "bots", additional_buttons=2)
 
-    keyboard.append([InlineKeyboardButton("➕Add", callback_data="bots_add")])
-    keyboard.append([InlineKeyboardButton("✖️Cancel", callback_data="cancel")])
+    keyboard.append([InlineKeyboardButton(Languages.kbd("add", update), callback_data="bots_add")])
+    keyboard.append([InlineKeyboardButton(Languages.kbd("cancel", update), callback_data="cancel")])
 
     return InlineKeyboardMarkup(keyboard)
 
 
-def bot(bot_obj: dict) -> InlineKeyboardMarkup:
+def bot(bot_obj: dict, update: Update) -> InlineKeyboardMarkup:
     keyboard = []
-    keyboard.append([InlineKeyboardButton("🔑Edit Token", callback_data=f"bot_edit {bot_obj['_id']}")])
-    private = [InlineKeyboardButton(f"🔒Private: {'✅' if bot_obj['is_private'] else '❌'}", callback_data=f"bot_private {bot_obj['_id']}")]
+    keyboard.append([InlineKeyboardButton(Languages.kbd("edit_token", update), callback_data=f"bot_edit {bot_obj['_id']}")])
+    private = [InlineKeyboardButton(Languages.kbd("private", update).format(private="✅" if bot_obj["is_private"] else "❌"), callback_data=f"bot_private {bot_obj['_id']}")]
     if bot_obj['is_private']:
-        private.append(InlineKeyboardButton("👥Users", callback_data=f"bot_users {bot_obj['_id']}"))
+        private.append(InlineKeyboardButton(Languages.kbd("users", update), callback_data=f"bot_users {bot_obj['_id']}"))
     keyboard.append(private)
-    keyboard.append([InlineKeyboardButton("🚨Admins", callback_data=f"bot_admins {bot_obj['_id']}")])
-    keyboard.append([InlineKeyboardButton("🗑️Delete", callback_data=f"bot_delete {bot_obj['_id']}")])
-    keyboard.append([InlineKeyboardButton("🔙Back", callback_data="bot_back")])
+    keyboard.append([InlineKeyboardButton(Languages.kbd("admins", update), callback_data=f"bot_admins {bot_obj['_id']}")])
+    keyboard.append([InlineKeyboardButton(Languages.kbd("delete", update), callback_data=f"bot_delete {bot_obj['_id']}")])
+    keyboard.append([InlineKeyboardButton(Languages.kbd("back", update), callback_data="bot_back")])
 
     return InlineKeyboardMarkup(keyboard)
 
 
-async def users(bot_obj: dict, bot: ExtBot) -> InlineKeyboardMarkup:
+async def users(bot_obj: dict, bot: ExtBot, update: Update) -> InlineKeyboardMarkup:
     keyboard = []
     for bot_user in bot_obj['users']:
         chat = await bot.get_chat(bot_user)
@@ -49,12 +52,12 @@ async def users(bot_obj: dict, bot: ExtBot) -> InlineKeyboardMarkup:
         keyboard.append([InlineKeyboardButton(name, callback_data=f"callback {name}"),
                          InlineKeyboardButton("🗑️", callback_data=f"user_delete {bot_obj['_id']} {bot_user}")])
 
-    keyboard.append([InlineKeyboardButton("🔙Back", callback_data=f"users_back {bot_obj['_id']}")])
+    keyboard.append([InlineKeyboardButton(Languages.kbd("back", update), callback_data=f"users_back {bot_obj['_id']}")])
 
     return InlineKeyboardMarkup(keyboard)
 
 
-async def admins(bot_obj: dict, user: int, bot: ExtBot) -> InlineKeyboardMarkup:
+async def admins(bot_obj: dict, user: int, bot: ExtBot, update: Update) -> InlineKeyboardMarkup:
     keyboard = []
     for admin in bot_obj['admins']:
         chat = await bot.get_chat(admin)
@@ -64,6 +67,6 @@ async def admins(bot_obj: dict, user: int, bot: ExtBot) -> InlineKeyboardMarkup:
             row.append(InlineKeyboardButton("🗑️", callback_data=f"admin_delete {bot_obj['_id']} {admin}"))
         keyboard.append(row)
 
-    keyboard.append([InlineKeyboardButton("🔙Back", callback_data=f"admins_back {bot_obj['_id']}")])
+    keyboard.append([InlineKeyboardButton(Languages.kbd("back", update), callback_data=f"admins_back {bot_obj['_id']}")])
 
     return InlineKeyboardMarkup(keyboard)

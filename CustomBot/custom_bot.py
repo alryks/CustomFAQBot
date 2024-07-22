@@ -5,7 +5,7 @@ from misc import callback
 
 from .bot import Bot
 
-from .handlers import start, edit_faq, message_handler, \
+from .handlers import start, edit, message_handler, \
     faq_ans, faq_ans_page, \
     faq_edit, faq_edit_page, \
     faq_add, faq_cancel, \
@@ -17,7 +17,7 @@ class CustomBot(Bot):
         super().__init__(token)
         self.handlers = [
             CommandHandler(["start", "help"], start),
-            CommandHandler("edit", edit_faq),
+            CommandHandler("edit", edit),
 
             CallbackQueryHandler(callback, "^callback"),
 
