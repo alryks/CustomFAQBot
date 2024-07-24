@@ -80,6 +80,18 @@ class Languages:
             "en": "FAQ for @{bot_username} is empty!",
             "ru": "ЧаВо для @{bot_username} пусто!"
         },
+        "send_caption": {
+            "en": "Send caption for @{bot_username}:",
+            "ru": "Отправьте описание для @{bot_username}:"
+        },
+        "invalid_caption": {
+            "en": "Invalid caption!",
+            "ru": "Некорректное описание!"
+        },
+        "caption_edited": {
+            "en": "Caption edited!",
+            "ru": "Описание изменено!"
+        },
         "send_question": {
             "en": "Send question:",
             "ru": "Отправьте вопрос:"
@@ -139,6 +151,10 @@ class Languages:
             "en": "🛑Stop answering",
             "ru": "🛑Завершить ввод"
         },
+        "reset_caption": {
+            "en": "🔄Reset Caption",
+            "ru": "🔄Сбросить описание"
+        },
     }
 
     _kbd = {
@@ -161,6 +177,10 @@ class Languages:
         "edit_token": {
             "en": "🔑Edit Token",
             "ru": "🔑Изменить токен"
+        },
+        "edit_caption": {
+            "en": "📝Edit Caption",
+            "ru": "📝Изменить описание"
         },
         "private": {
             "en": "🔒Private: {private}",

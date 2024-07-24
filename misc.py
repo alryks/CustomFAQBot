@@ -12,7 +12,7 @@ async def callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.callback_query.answer(" ".join(update.callback_query.data.split(" ")[1:]))
 
 
-def create_faq(faq: list, bot_username: str, bot_full_name: str, update: Update, page: int = 1) -> str:
+def create_faq(faq: list, bot_username: str, caption: str, update: Update, page: int = 1) -> str:
     n = len(faq)
     if n == 0:
         text = Languages.msg("no_faq", update).format(bot_username=bot_username)
@@ -23,7 +23,10 @@ def create_faq(faq: list, bot_username: str, bot_full_name: str, update: Update,
         page = max(page, 1)
         page = min(page, max_pages)
 
-        text = Languages.msg("faq", update).format(bot_username=bot_username)
+        if caption.strip():
+            text = caption + ":"
+        else:
+            text = Languages.msg("faq", update).format(bot_username=bot_username)
         for i in range((page - 1) * max_rows, min(page * max_rows, n)):
             text += f"\n\n<b>{i + 1}.</b> {faq[i]['question']}"
 

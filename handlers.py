@@ -243,7 +243,7 @@ async def accept(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if access_type == "admin":
         BotsDb.add_admin(bot_id, user_id)
     else:
-        BotsDb.add_user(bot_id, user_id)
+        BotsDb.add_user_with_id(bot_id, user_id)
 
     await context.bot.delete_message(
         chat_id=update.effective_chat.id,
@@ -358,7 +358,7 @@ async def user_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         return
     bot_id, app = data
 
-    user_id = int(update.callback_query.data.split(" ")[2])
+    user_id = ObjectId(update.callback_query.data.split(" ")[2])
 
     BotsDb.delete_user(bot_id, user_id)
 

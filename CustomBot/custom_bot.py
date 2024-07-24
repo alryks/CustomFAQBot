@@ -7,7 +7,7 @@ from .bot import Bot
 
 from .handlers import start, edit, message_handler, \
     faq_ans, faq_ans_page, \
-    faq_edit, faq_edit_page, \
+    edit_caption, faq_edit, faq_edit_page, \
     faq_add, faq_cancel, \
     question_edit, question_delete, question_back
 
@@ -23,6 +23,8 @@ class CustomBot(Bot):
 
             CallbackQueryHandler(faq_ans_page, "^faq_ans_page"),
             CallbackQueryHandler(faq_ans, "^faq_ans"),
+
+            CallbackQueryHandler(edit_caption, "caption"),
 
             CallbackQueryHandler(faq_edit_page, "^faq_edit_page"),
             CallbackQueryHandler(faq_edit, "^faq_edit"),

@@ -47,10 +47,10 @@ def bot(bot_obj: dict, update: Update) -> InlineKeyboardMarkup:
 async def users(bot_obj: dict, bot: ExtBot, update: Update) -> InlineKeyboardMarkup:
     keyboard = []
     for bot_user in bot_obj['users']:
-        chat = await bot.get_chat(bot_user)
+        chat = await bot.get_chat(bot_user["tg_id"])
         name = chat.full_name + (f" @{chat.username}" if chat.username else "")
         keyboard.append([InlineKeyboardButton(name, callback_data=f"callback {name}"),
-                         InlineKeyboardButton("🗑️", callback_data=f"user_delete {bot_obj['_id']} {bot_user}")])
+                         InlineKeyboardButton("🗑️", callback_data=f"user_delete {bot_obj['_id']} {bot_user['_id']}")])
 
     keyboard.append([InlineKeyboardButton(Languages.kbd("back", update), callback_data=f"users_back {bot_obj['_id']}")])
 

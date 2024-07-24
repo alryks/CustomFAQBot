@@ -20,10 +20,17 @@ def faq(bot_faq: list, update: Update, edit: bool = False, page: int = 1) -> Inl
                           horizontal=True, additional_buttons=1 + int(edit))
 
     if edit:
+        keyboard.append([InlineKeyboardButton(Languages.kbd("edit_caption", update), callback_data=f"caption")])
         keyboard.append([InlineKeyboardButton(Languages.kbd("add_question", update), callback_data=f"faq_add")])
     keyboard.append([InlineKeyboardButton(Languages.kbd("cancel", update), callback_data="cancel")])
 
     return InlineKeyboardMarkup(keyboard)
+
+
+def reset_caption(update: Update) -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup([[Languages.btn("reset_caption", update)], [Languages.btn("cancel", update)]],
+                               resize_keyboard=True,
+                               one_time_keyboard=True)
 
 
 def stop_answer(update: Update) -> ReplyKeyboardMarkup:

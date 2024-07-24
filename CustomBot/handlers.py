@@ -85,10 +85,11 @@ async def run_faq(update: Update, context: ContextTypes.DEFAULT_TYPE, edit=False
     if search is None:
         search = ""
 
-    bot_faq = filter_faq(BotsDb.get_bot_by_id(context.bot.id)["faq"], search)
+    bot_obj = BotsDb.get_bot_by_id(context.bot.id)
+    bot_faq = filter_faq(bot_obj["faq"], search)
     bot_faq = [faq for faq in bot_faq if search.lower() in faq["question"].lower()]
 
-    text = create_faq(bot_faq, context.bot.bot.username, context.bot.bot.full_name, update, page)
+    text = create_faq(bot_faq, context.bot.bot.username, bot_obj.get("caption", ""), update, page)
 
     if delete:
         await context.bot.delete_message(
@@ -121,7 +122,8 @@ async def edit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if (context.user_data.get("state") in [State.ADD_QUESTION.name,
+    if (context.user_data.get("state") in [State.EDIT_CAPTION,
+                                           State.ADD_QUESTION.name,
                                            State.EDIT_QUESTION.name,
                                            State.ADD_ANSWER.name,
                                            State.EDIT_ANSWER.name] and
@@ -206,6 +208,30 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             )
 
             return
+        elif context.user_data["state"] == State.EDIT_CAPTION.name:
+            caption = update.message.text
+            if caption is None or caption.strip() == "":
+                await context.bot.send_message(
+                    chat_id=update.effective_chat.id,
+                    text=Languages.msg("invalid_caption", update),
+                    parse_mode=PARSE_MODE,
+                )
+                await edit_caption(update, context)
+                return
+
+            if caption == Languages.btn("reset_caption", update):
+                BotsDb.edit_caption(BotsDb.get_bot_by_id(context.bot.id)["_id"], "")
+                await edit_faq(update, context)
+                return
+
+            BotsDb.edit_caption(BotsDb.get_bot_by_id(context.bot.id)["_id"], caption)
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text=Languages.msg("caption_edited", update),
+                parse_mode=PARSE_MODE,
+            )
+            await edit_faq(update, context)
+            return
 
     if not await check_user(update, context):
         return
@@ -254,6 +280,25 @@ async def faq_ans(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def faq_ans_page(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await run_faq(update, context, delete=True, page=int(update.callback_query.data.split(" ")[1]))
+
+
+async def edit_caption(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not await check_admin(update, context):
+        return
+
+    await context.bot.delete_message(
+        chat_id=update.effective_chat.id,
+        message_id=update.effective_message.message_id
+    )
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=Languages.msg("send_caption", update).format(bot_username=context.bot.bot.username),
+        reply_markup=keyboards.reset_caption(update),
+        parse_mode=PARSE_MODE,
+    )
+
+    context.user_data["state"] = State.EDIT_CAPTION.name
 
 
 async def faq_edit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

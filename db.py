@@ -8,7 +8,7 @@ from telegram.ext import Application
 from typing import Optional
 
 from config import DB
-from state import State, bots
+from state import bots
 
 
 class BotsDb:
@@ -29,15 +29,68 @@ class BotsDb:
     @classmethod
     def is_user(cls, bot_id: ObjectId, user_id: int) -> bool:
         bot = cls.bots.find_one({"_id": bot_id})
+        user_ids = [user["tg_id"] for user in bot.get("users", [])]
         if bot and (not bot.get("is_private", False) or
-                    user_id in bot.get("users", []) or
+                    user_id in user_ids or
                     user_id in bot.get("admins", [])):
             return True
         return False
 
     @classmethod
-    def add_user(cls, bot_id: ObjectId, user_id: int) -> None:
-        cls.bots.update_one({"_id": bot_id}, {"$addToSet": {"users": user_id}})
+    def add_user_with_id(cls, bot_id: ObjectId, user_id: int) -> None:
+        cls.bots.update_one({"_id": bot_id}, {"$addToSet": {"users": {
+            "_id": ObjectId(),
+            "tg_id": user_id,
+        }}})
+
+    @classmethod
+    def add_user_with_data(cls, bot_id: ObjectId, name: str, job_title: str = "", unit: str = "", place: str = "", phone: str = "", email: str = "") -> None:
+        cls.bots.update_one({"_id": bot_id}, {"$addToSet": {"users": {
+            "_id": ObjectId(),
+            "tg_id": 0,
+            "name": name,
+            "job_title": job_title,
+            "unit": unit,
+            "place": place,
+            "phone": phone,
+            "email": email,
+        }}})
+
+    @classmethod
+    def merge_id_and_data_users(cls, bot_id: ObjectId, id_user: ObjectId, data_user: ObjectId) -> bool:
+        users = cls.bots.find_one({"_id": bot_id, "users._id": id_user}, {"users.$": 1}).get("users", [])
+        if not users:
+            return False
+        id_user_obj = users[0]
+        cls.bots.update_one({"_id": bot_id, "users._id": data_user}, {"$set": {"users.$.tg_id": id_user_obj["tg_id"]}})
+        cls.bots.update_one({"_id": bot_id}, {"$pull": {"users": {"_id": id_user}}})
+        return True
+
+    @classmethod
+    def unmerge_user(cls, bot_id: ObjectId, user_id: ObjectId) -> bool:
+        users = cls.bots.find_one({"_id": bot_id, "users._id": user_id}, {"users.$": 1}).get("users", [])
+        if not users:
+            return False
+        user = users[0]
+        if user.get("name", "") == "":
+            return False
+
+        cls.add_user_with_id(bot_id, user["tg_id"])
+        user["tg_id"] = 0
+        cls.bots.update_one({"_id": bot_id, "users._id": user_id}, {"$set": user})
+        return True
+
+
+    @classmethod
+    def edit_user(cls, bot_id: ObjectId, user_id: ObjectId, name: str, job_title: str = "", unit: str = "", place: str = "", phone: str = "", email: str = "") -> None:
+        cls.bots.update_one({"_id": bot_id, "users._id": user_id}, {"$set": {
+            "users.$.name": name,
+            "users.$.job_title": job_title,
+            "users.$.unit": unit,
+            "users.$.place": place,
+            "users.$.phone": phone,
+            "users.$.email": email,
+        }})
 
     @classmethod
     def get_bot(cls, bot_id: ObjectId) -> dict:
@@ -76,6 +129,7 @@ class BotsDb:
                                         "admins": [admin],
                                         "is_private": False,
                                         "users": [],
+                                        "caption": "",
                                         "faq": [],
                                         }).inserted_id
         except DuplicateKeyError:
@@ -97,6 +151,10 @@ class BotsDb:
         cls.bots.delete_one({"_id": bot_id})
 
     @classmethod
+    def edit_caption(cls, bot_id: ObjectId, caption: str) -> None:
+        cls.bots.update_one({"_id": bot_id}, {"$set": {"caption": caption}})
+
+    @classmethod
     def add_question(cls, bot_id: ObjectId, question: str, answers: list[dict]) -> None:
         cls.bots.update_one({"_id": bot_id}, {"$push": {"faq": {"_id": ObjectId(), "question": question, "answers": answers}}})
 
@@ -116,10 +174,9 @@ class BotsDb:
         if bot_obj["faq"]:
             return bot_obj["faq"][0]
 
-
     @classmethod
-    def delete_user(cls, bot_id: ObjectId, user_id: int) -> None:
-        cls.bots.update_one({"_id": bot_id}, {"$pull": {"users": user_id}})
+    def delete_user(cls, bot_id: ObjectId, id: ObjectId) -> None:
+        cls.bots.update_one({"_id": bot_id}, {"$pull": {"users": {"_id": id}}})
 
     @classmethod
     def delete_admin(cls, bot_id: ObjectId, admin_id: int) -> None:
