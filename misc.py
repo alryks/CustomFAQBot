@@ -1,4 +1,4 @@
-from telegram import Update
+from telegram import Update, Bot
 from telegram.ext import ContextTypes
 
 from telegram import InlineKeyboardButton
@@ -33,7 +33,28 @@ def create_faq(faq: list, bot_username: str, caption: str, update: Update, page:
     return text
 
 
-def pagination(buttons, page, name, horizontal=False, additional_buttons=0):
+def create_book(users: list, update: Update, page: int = 1) -> str:
+    n = len(users)
+    if n == 0:
+        text = Languages.msg("empty", update)
+    else:
+        max_rows = min(n, COLS_PER_PAGE)
+        max_pages = (n + max_rows - 1) // max_rows
+
+        page = max(page, 1)
+        page = min(page, max_pages)
+
+        text = ""
+
+        for i in range((page - 1) * max_rows, min(page * max_rows, n)):
+            text += f"\n\n<b>{i + 1}.</b> {users[i]['name']}"
+            if users[i].get("job_title", "") != "":
+                text += f" – <i>{users[i]['job_title']}</i>"
+
+    return text
+
+
+def pagination(buttons, page, name, horizontal=False, additional_buttons=0, additional_info=""):
     keyboard = []
     n = len(buttons)
     max_buttons = n
@@ -62,14 +83,63 @@ def pagination(buttons, page, name, horizontal=False, additional_buttons=0):
 
     if max_pages > 1:
         pages_str = f"{page}/{max_pages}"
-        keyboard.append([
-             InlineKeyboardButton("⬅️", callback_data=f"{name}_page {page - 1}"),
-             InlineKeyboardButton(pages_str, callback_data=f"callback {pages_str}"),
-             InlineKeyboardButton("➡️", callback_data=f"{name}_page {page + 1}")
-        ])
+        if additional_info:
+            keyboard.append([
+                InlineKeyboardButton("⬅️", callback_data=f"{name}_page {additional_info} {page - 1}"),
+                InlineKeyboardButton(pages_str, callback_data=f"callback {pages_str}"),
+                InlineKeyboardButton("➡️", callback_data=f"{name}_page {additional_info} {page + 1}")
+            ])
+        else:
+            keyboard.append([
+                 InlineKeyboardButton("⬅️", callback_data=f"{name}_page {page - 1}"),
+                 InlineKeyboardButton(pages_str, callback_data=f"callback {pages_str}"),
+                 InlineKeyboardButton("➡️", callback_data=f"{name}_page {page + 1}")
+            ])
 
     return keyboard
 
 
+async def user_info(user_obj: dict, update: Update, bot: Bot) -> str:
+    general_info = ""
+    if user_obj.get("name", "") != "":
+        general_info += Languages.msg("name", update).format(
+            name=user_obj["name"]) + "\n"
+    if user_obj.get("job_title", "") != "":
+        general_info += Languages.msg("job_title", update).format(
+            job_title=user_obj["job_title"]) + "\n"
+    if user_obj.get("unit", "") != "":
+        general_info += Languages.msg("unit", update).format(
+            unit=user_obj["unit"]) + "\n"
+    if user_obj.get("place", "") != "":
+        general_info += Languages.msg("place", update).format(
+            place=user_obj["place"]) + "\n"
+
+    contacts = ""
+    if user_obj.get("phone", "") != "":
+        contacts += Languages.msg("phone", update).format(
+            phone=user_obj["phone"]) + "\n"
+    if user_obj.get("email", "") != "":
+        contacts += Languages.msg("email", update).format(
+            email=user_obj["email"]) + "\n"
+    if user_obj.get("tg_id", 0) != 0:
+        chat = await bot.get_chat(user_obj["tg_id"])
+        username = chat.full_name + (
+            f" @{chat.username}" if chat.username else "")
+        contacts += Languages.msg("telegram", update).format(telegram=username) + "\n"
+
+    if general_info == "":
+        text = f'{Languages.msg("contacts", update)}\n{contacts}'
+    elif contacts == "":
+        text = f'{Languages.msg("general_info", update)}\n{general_info}'
+    else:
+        text = f'{Languages.msg("general_info", update)}\n{general_info}\n{Languages.msg("contacts", update)}\n{contacts}'
+
+    return text
+
+
 def filter_faq(faq: list, search: str) -> list:
     return [question for question in faq if search.lower() in question["question"].lower()]
+
+
+def filter_book(users: list, search: str) -> list:
+    return [user for user in users if user.get("name", "") != "" and (search.lower() in user.get("name", "").lower() or search.lower() in user.get("job_title", "").lower() or search.lower() in user.get("unit", "").lower() or search.lower() in user.get("place", "").lower() or search.lower() in user.get("phone", "").lower() or search.lower() in user.get("email", "").lower())]

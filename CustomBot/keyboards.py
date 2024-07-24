@@ -27,8 +27,21 @@ def faq(bot_faq: list, update: Update, edit: bool = False, page: int = 1) -> Inl
     return InlineKeyboardMarkup(keyboard)
 
 
-def reset_caption(update: Update) -> ReplyKeyboardMarkup:
-    return ReplyKeyboardMarkup([[Languages.btn("reset_caption", update)], [Languages.btn("cancel", update)]],
+def book(users: list, update: Update, page: int = 1) -> InlineKeyboardMarkup:
+    buttons = []
+    for i in range(len(users)):
+        button = InlineKeyboardButton(f"{i + 1}", callback_data=f"user {users[i]['_id']}")
+        buttons.append(button)
+
+    keyboard = pagination(buttons, page, "book", horizontal=True, additional_buttons=1)
+
+    keyboard.append([InlineKeyboardButton(Languages.kbd("cancel", update), callback_data="cancel")])
+
+    return InlineKeyboardMarkup(keyboard)
+
+
+def reset(update: Update) -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup([[Languages.btn("reset", update)], [Languages.btn("cancel", update)]],
                                resize_keyboard=True,
                                one_time_keyboard=True)
 

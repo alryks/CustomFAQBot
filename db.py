@@ -44,17 +44,27 @@ class BotsDb:
         }}})
 
     @classmethod
-    def add_user_with_data(cls, bot_id: ObjectId, name: str, job_title: str = "", unit: str = "", place: str = "", phone: str = "", email: str = "") -> None:
+    def add_user_with_name(cls, bot_id: ObjectId, name: str) -> ObjectId:
+        user_id = ObjectId()
         cls.bots.update_one({"_id": bot_id}, {"$addToSet": {"users": {
-            "_id": ObjectId(),
+            "_id": user_id,
             "tg_id": 0,
             "name": name,
-            "job_title": job_title,
-            "unit": unit,
-            "place": place,
-            "phone": phone,
-            "email": email,
+            "job_title": "",
+            "unit": "",
+            "place": "",
+            "phone": "",
+            "email": "",
         }}})
+        return user_id
+
+    @classmethod
+    def edit_user(cls, bot_id: ObjectId, user_id: ObjectId, **kwargs) -> None:
+        cls.bots.update_one({"_id": bot_id, "users._id": user_id}, {"$set": {f"users.$.{k}": v for k, v in kwargs.items() if v != ""}})
+
+    @classmethod
+    def reset_field(cls, bot_id: ObjectId, user_id: ObjectId, field: str) -> None:
+        cls.bots.update_one({"_id": bot_id, "users._id": user_id}, {"$set": {f"users.$.{field}": ""}})
 
     @classmethod
     def merge_id_and_data_users(cls, bot_id: ObjectId, id_user: ObjectId, data_user: ObjectId) -> bool:
@@ -82,15 +92,12 @@ class BotsDb:
 
 
     @classmethod
-    def edit_user(cls, bot_id: ObjectId, user_id: ObjectId, name: str, job_title: str = "", unit: str = "", place: str = "", phone: str = "", email: str = "") -> None:
-        cls.bots.update_one({"_id": bot_id, "users._id": user_id}, {"$set": {
-            "users.$.name": name,
-            "users.$.job_title": job_title,
-            "users.$.unit": unit,
-            "users.$.place": place,
-            "users.$.phone": phone,
-            "users.$.email": email,
-        }})
+    def get_user(cls, bot_id: ObjectId, user_id: ObjectId) -> Optional[dict]:
+        bot_obj = cls.bots.find_one({"_id": bot_id, "users._id": user_id}, {"users.$": 1})
+        if bot_obj is None:
+            return
+        if bot_obj["users"]:
+            return bot_obj["users"][0]
 
     @classmethod
     def get_bot(cls, bot_id: ObjectId) -> dict:

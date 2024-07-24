@@ -13,7 +13,9 @@ from config import BOT
 from handlers import start, accept, \
     bot, bot_page, bot_token, message_handler, cancel, \
     bot_private, bot_users, bot_admins, bot_delete, bot_back, \
-    user_delete, users_back, admin_delete, admins_back
+    user_delete, users_page, users_add, users_back, user, \
+    edit_user_name, edit_job_title, edit_unit, edit_place, edit_phone, edit_email, user_back, \
+    admin_delete, admins_back
 
 
 async def main():
@@ -42,7 +44,20 @@ async def main():
         CallbackQueryHandler(bot_back, "bot_back"),
 
         CallbackQueryHandler(user_delete, "^user_delete"),
+        CallbackQueryHandler(users_page, "^users_page"),
+        CallbackQueryHandler(users_add, "^users_add"),
         CallbackQueryHandler(users_back, "^users_back"),
+
+        CallbackQueryHandler(edit_user_name, "^user_name"),
+        CallbackQueryHandler(edit_job_title, "^user_job_title"),
+        CallbackQueryHandler(edit_unit, "^user_unit"),
+        CallbackQueryHandler(edit_place, "^user_place"),
+        CallbackQueryHandler(edit_phone, "^user_phone"),
+        CallbackQueryHandler(edit_email, "^user_email"),
+        CallbackQueryHandler(user_back, "^user_back"),
+
+        CallbackQueryHandler(user, "^user"),
+
         CallbackQueryHandler(admin_delete, "^admin_delete"),
         CallbackQueryHandler(admins_back, "^admins_back"),
 

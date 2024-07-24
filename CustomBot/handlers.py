@@ -12,7 +12,7 @@ from db import BotsDb
 
 from .state import State
 
-from misc import create_faq, filter_faq
+from misc import create_faq, filter_faq, create_book, filter_book, user_info
 
 from lang import Languages
 
@@ -76,7 +76,7 @@ async def check_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> boo
 
 
 async def run_faq(update: Update, context: ContextTypes.DEFAULT_TYPE, edit=False, delete=False, page=1) -> None:
-    context.user_data["state"] = State.IDLE.name
+    context.user_data["state"] = State.FAQ.name
 
     if not await check_user(update, context):
         return
@@ -87,7 +87,6 @@ async def run_faq(update: Update, context: ContextTypes.DEFAULT_TYPE, edit=False
 
     bot_obj = BotsDb.get_bot_by_id(context.bot.id)
     bot_faq = filter_faq(bot_obj["faq"], search)
-    bot_faq = [faq for faq in bot_faq if search.lower() in faq["question"].lower()]
 
     text = create_faq(bot_faq, context.bot.bot.username, bot_obj.get("caption", ""), update, page)
 
@@ -119,6 +118,74 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def edit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     context.user_data["search"] = None
     await edit_faq(update, context)
+
+
+async def run_book(update: Update, context: ContextTypes.DEFAULT_TYPE, delete: bool = False, page: int = 1) -> None:
+    context.user_data["state"] = State.BOOK.name
+
+    if not await check_user(update, context):
+        return
+
+    search = context.user_data.get("search")
+    if search is None:
+        search = ""
+
+    bot_obj = BotsDb.get_bot_by_id(context.bot.id)
+    bot_faq = filter_book(bot_obj["users"], search)
+
+    text = create_book(bot_faq, update, page)
+
+    if delete:
+        await context.bot.delete_message(
+            chat_id=update.effective_chat.id,
+            message_id=update.effective_message.message_id
+        )
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=text,
+        reply_markup=keyboards.book(bot_faq, update, page),
+        parse_mode=PARSE_MODE,
+    )
+
+
+async def book(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    context.user_data["search"] = None
+    await run_book(update, context)
+
+
+async def book_page(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await run_book(update, context, delete=True, page=int(update.callback_query.data.split(" ")[1]))
+
+
+async def user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not await check_user(update, context):
+        return
+
+    user_id = ObjectId(update.callback_query.data.split(" ")[1])
+    bot_obj = BotsDb.get_bot_by_id(context.bot.id)
+    user_obj = BotsDb.get_user(bot_obj["_id"], user_id)
+
+    text = await user_info(user_obj, update, context.bot)
+
+    delete_message_ids = context.user_data.get("delete_message_ids")
+    if delete_message_ids is not None:
+        for delete_message_id in delete_message_ids:
+            await context.bot.delete_message(
+                chat_id=update.effective_chat.id,
+                message_id=delete_message_id
+            )
+
+    context.user_data["delete_message_ids"] = []
+    message = await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=text,
+        parse_mode=PARSE_MODE,
+    )
+    context.user_data["delete_message_ids"].append(message.message_id)
+    await update.callback_query.answer(
+        text=Languages.msg("answer_sent", update),
+    )
 
 
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -236,11 +303,13 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if not await check_user(update, context):
         return
 
-    if context.user_data["state"] != State.IDLE.name:
-        context.user_data["state"] = State.IDLE.name
-
     context.user_data["search"] = update.message.text if update.message.text else ""
-    await run_faq(update, context)
+    if context.user_data["state"] == State.FAQ.name:
+        await run_faq(update, context)
+    elif context.user_data["state"] == State.BOOK.name:
+        await run_book(update, context)
+    else:
+        await edit_faq(update, context)
 
 
 async def faq_ans(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -294,7 +363,7 @@ async def edit_caption(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=Languages.msg("send_caption", update).format(bot_username=context.bot.bot.username),
-        reply_markup=keyboards.reset_caption(update),
+        reply_markup=keyboards.reset(update),
         parse_mode=PARSE_MODE,
     )
 

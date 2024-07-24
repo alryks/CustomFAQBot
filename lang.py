@@ -12,6 +12,10 @@ class Languages:
             "en": "I don't understand you!",
             "ru": "Я вас не понимаю!"
         },
+        "empty": {
+            "en": "Empty...",
+            "ru": "Пусто..."
+        },
         "your_faqs": {
             "en": "Your FAQs:",
             "ru": "Ваши ЧаВо:"
@@ -27,6 +31,90 @@ class Languages:
         "users": {
             "en": "@{bot_username} users:",
             "ru": "Пользователи @{bot_username}:"
+        },
+        "general_info": {
+            "en": "<b>General info:</b>",
+            "ru": "<b>Общая информация:</b>"
+        },
+        "contacts": {
+            "en": "<b>Contacts:</b>",
+            "ru": "<b>Контакты:</b>"
+        },
+        "name": {
+            "en": "<i>Name:</i> {name}",
+            "ru": "<i>Имя:</i> {name}"
+        },
+        "job_title": {
+            "en": "<i>Job Title:</i> {job_title}",
+            "ru": "<i>Должность:</i> {job_title}"
+        },
+        "unit": {
+            "en": "<i>Unit:</i> {unit}",
+            "ru": "<i>Подразделение:</i> {unit}"
+        },
+        "place": {
+            "en": "<i>Place of work:</i> {place}",
+            "ru": "<i>Место работы:</i> {place}"
+        },
+        "phone": {
+            "en": "<i>Phone:</i> {phone}",
+            "ru": "<i>Телефон:</i> {phone}"
+        },
+        "email": {
+            "en": "<i>Email:</i> {email}",
+            "ru": "<i>Почта:</i> {email}"
+        },
+        "telegram": {
+            "en": "<i>Telegram:</i> {telegram}",
+            "ru": "<i>Телеграм:</i> {telegram}"
+        },
+        "send_user_name": {
+            "en": "Send user name:",
+            "ru": "Отправьте имя пользователя:"
+        },
+        "invalid_user_name": {
+            "en": "Invalid user name!",
+            "ru": "Некорректное имя пользователя!"
+        },
+        "send_job_title": {
+            "en": "Send job title:",
+            "ru": "Отправьте должность:"
+        },
+        "invalid_job_title": {
+            "en": "Invalid job title!",
+            "ru": "Некорректная должность!"
+        },
+        "send_unit": {
+            "en": "Send unit:",
+            "ru": "Отправьте подразделение:"
+        },
+        "invalid_unit": {
+            "en": "Invalid unit!",
+            "ru": "Некорректное подразделение!"
+        },
+        "send_place": {
+            "en": "Send place of work:",
+            "ru": "Отправьте место работы:"
+        },
+        "invalid_place": {
+            "en": "Invalid place of work!",
+            "ru": "Некорректное место работы!"
+        },
+        "send_phone": {
+            "en": "Send phone:",
+            "ru": "Отправьте телефон:"
+        },
+        "invalid_phone": {
+            "en": "Invalid phone!",
+            "ru": "Некорректный телефон!"
+        },
+        "send_email": {
+            "en": "Send email:",
+            "ru": "Отправьте почту:"
+        },
+        "invalid_email": {
+            "en": "Invalid email!",
+            "ru": "Некорректная почта!"
         },
         "admins": {
             "en": "@{bot_username} admins:",
@@ -151,9 +239,9 @@ class Languages:
             "en": "🛑Stop answering",
             "ru": "🛑Завершить ввод"
         },
-        "reset_caption": {
-            "en": "🔄Reset Caption",
-            "ru": "🔄Сбросить описание"
+        "reset": {
+            "en": "🔄Reset",
+            "ru": "🔄Сбросить"
         },
     }
 
@@ -189,6 +277,34 @@ class Languages:
         "users": {
             "en": "👥Users",
             "ru": "👥Пользователи"
+        },
+        "add_user": {
+            "en": "➕Add User",
+            "ru": "➕Добавить пользователя"
+        },
+        "edit_user_name": {
+            "en": "🏷️Edit Name",
+            "ru": "🏷️Изменить имя"
+        },
+        "edit_job_title": {
+            "en": "💼Edit Job Title",
+            "ru": "💼Изменить должность"
+        },
+        "edit_unit": {
+            "en": "🏢Edit Unit",
+            "ru": "🏢Изменить подразделение"
+        },
+        "edit_place": {
+            "en": "📍Edit Place",
+            "ru": "📍Изменить место работы"
+        },
+        "edit_phone": {
+            "en": "📞Edit Phone",
+            "ru": "📞Изменить телефон"
+        },
+        "edit_email": {
+            "en": "📧Edit Email",
+            "ru": "📧Изменить почту"
         },
         "admins": {
             "en": "🚨Admins",
