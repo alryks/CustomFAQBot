@@ -306,8 +306,18 @@ async def accept(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     if access_type == "admin":
         BotsDb.add_admin(bot_id, user_id)
+        await app.bot.send_message(
+            chat_id=user_id,
+            text=Languages.msg("admin_accepted", update).format(bot_name=app.bot.bot.username),
+            parse_mode=PARSE_MODE,
+        )
     else:
         BotsDb.add_user_with_id(bot_id, user_id)
+        await app.bot.send_message(
+            chat_id=user_id,
+            text=Languages.msg("user_accepted", update).format(bot_name=app.bot.bot.username),
+            parse_mode=PARSE_MODE,
+        )
 
     await context.bot.delete_message(
         chat_id=update.effective_chat.id,

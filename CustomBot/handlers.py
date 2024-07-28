@@ -12,7 +12,7 @@ from db import BotsDb
 
 from .state import State
 
-from misc import create_faq, filter_faq, create_book, filter_book, user_info
+from misc import create_faq, filter_faq, create_contacts, filter_contacts, user_info
 
 from lang import Languages
 
@@ -20,11 +20,6 @@ from lang import Languages
 async def check_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
     if BotsDb.is_user(BotsDb.get_bot_by_id(context.bot.id)["_id"], update.effective_user.id):
         return True
-
-    await context.bot.delete_message(
-        chat_id=update.effective_chat.id,
-        message_id=update.effective_message.message_id
-    )
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
@@ -49,11 +44,6 @@ async def check_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool
 async def check_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
     if BotsDb.is_admin(BotsDb.get_bot_by_id(context.bot.id)["_id"], update.effective_user.id):
         return True
-
-    await context.bot.delete_message(
-        chat_id=update.effective_chat.id,
-        message_id=update.effective_message.message_id
-    )
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
@@ -110,9 +100,23 @@ async def edit_faq(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await run_faq(update, context, edit=True)
 
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def faq_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     context.user_data["search"] = None
     await run_faq(update, context)
+
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    context.user_data["search"] = None
+    context.user_data["state"] = State.IDLE.name
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=Languages.msg("start", update),
+        parse_mode=PARSE_MODE,
+    )
+
+    if not await check_user(update, context):
+        return
 
 
 async def edit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -120,8 +124,8 @@ async def edit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await edit_faq(update, context)
 
 
-async def run_book(update: Update, context: ContextTypes.DEFAULT_TYPE, delete: bool = False, page: int = 1) -> None:
-    context.user_data["state"] = State.BOOK.name
+async def run_contacts(update: Update, context: ContextTypes.DEFAULT_TYPE, delete: bool = False, page: int = 1) -> None:
+    context.user_data["state"] = State.CONTACTS.name
 
     if not await check_user(update, context):
         return
@@ -131,9 +135,9 @@ async def run_book(update: Update, context: ContextTypes.DEFAULT_TYPE, delete: b
         search = ""
 
     bot_obj = BotsDb.get_bot_by_id(context.bot.id)
-    bot_faq = filter_book(bot_obj["users"], search)
+    bot_faq = filter_contacts(bot_obj["users"], search)
 
-    text = create_book(bot_faq, update, page)
+    text = create_contacts(bot_faq, update, page)
 
     if delete:
         await context.bot.delete_message(
@@ -144,18 +148,18 @@ async def run_book(update: Update, context: ContextTypes.DEFAULT_TYPE, delete: b
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=text,
-        reply_markup=keyboards.book(bot_faq, update, page),
+        reply_markup=keyboards.contacts(bot_faq, update, page),
         parse_mode=PARSE_MODE,
     )
 
 
-async def book(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def contacts(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     context.user_data["search"] = None
-    await run_book(update, context)
+    await run_contacts(update, context)
 
 
-async def book_page(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await run_book(update, context, delete=True, page=int(update.callback_query.data.split(" ")[1]))
+async def contacts_page(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await run_contacts(update, context, delete=True, page=int(update.callback_query.data.split(" ")[1]))
 
 
 async def user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -306,8 +310,8 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     context.user_data["search"] = update.message.text if update.message.text else ""
     if context.user_data["state"] == State.FAQ.name:
         await run_faq(update, context)
-    elif context.user_data["state"] == State.BOOK.name:
-        await run_book(update, context)
+    elif context.user_data["state"] == State.CONTACTS.name:
+        await run_contacts(update, context)
     else:
         await edit_faq(update, context)
 

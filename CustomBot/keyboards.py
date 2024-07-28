@@ -27,13 +27,13 @@ def faq(bot_faq: list, update: Update, edit: bool = False, page: int = 1) -> Inl
     return InlineKeyboardMarkup(keyboard)
 
 
-def book(users: list, update: Update, page: int = 1) -> InlineKeyboardMarkup:
+def contacts(users: list, update: Update, page: int = 1) -> InlineKeyboardMarkup:
     buttons = []
     for i in range(len(users)):
         button = InlineKeyboardButton(f"{i + 1}", callback_data=f"user {users[i]['_id']}")
         buttons.append(button)
 
-    keyboard = pagination(buttons, page, "book", horizontal=True, additional_buttons=1)
+    keyboard = pagination(buttons, page, "contacts", horizontal=True, additional_buttons=1)
 
     keyboard.append([InlineKeyboardButton(Languages.kbd("cancel", update), callback_data="cancel")])
 

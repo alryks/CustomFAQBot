@@ -5,8 +5,8 @@ from misc import callback
 
 from .bot import Bot
 
-from .handlers import start, edit, message_handler, \
-    book, book_page, user, \
+from .handlers import start, faq_command, edit, message_handler, \
+    contacts, contacts_page, user, \
     faq_ans, faq_ans_page, \
     edit_caption, faq_edit, faq_edit_page, \
     faq_add, faq_cancel, \
@@ -18,10 +18,12 @@ class CustomBot(Bot):
         super().__init__(token)
         self.handlers = [
             CommandHandler(["start", "help"], start),
-            CommandHandler("edit", edit),
-            CommandHandler("book", book),
 
-            CallbackQueryHandler(book_page, "^book_page"),
+            CommandHandler("faq", faq_command),
+            CommandHandler("edit", edit),
+            CommandHandler("contacts", contacts),
+
+            CallbackQueryHandler(contacts_page, "^contacts_page"),
 
             CallbackQueryHandler(user, "^user"),
 

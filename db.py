@@ -38,7 +38,10 @@ class BotsDb:
 
     @classmethod
     def add_user_with_id(cls, bot_id: ObjectId, user_id: int) -> None:
-        cls.bots.update_one({"_id": bot_id}, {"$addToSet": {"users": {
+        for user in cls.bots.find_one({"_id": bot_id}).get("users", []):
+            if user.get("tg_id", 0) == user_id:
+                return
+        cls.bots.update_one({"_id": bot_id}, {"$push": {"users": {
             "_id": ObjectId(),
             "tg_id": user_id,
         }}})

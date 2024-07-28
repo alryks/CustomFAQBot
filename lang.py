@@ -16,6 +16,10 @@ class Languages:
             "en": "Empty...",
             "ru": "Пусто..."
         },
+        "start": {
+            "en": "Welcome! I'm your company navigator. I can help you find the right employee and answer questions.",
+            "ru": "Приветствую! Я твой навигатор по компании. Я могу помочь тебе найти нужного сотрудника, а также ответить на вопросы."
+        },
         "your_faqs": {
             "en": "Your FAQs:",
             "ru": "Ваши ЧаВо:"
@@ -159,6 +163,14 @@ class Languages:
         "request_admin": {
             "en": "User <b>{name}</b> requested <b>admin rights</b> to @{bot_name}",
             "ru": "Пользователь <b>{name}</b> запросил <b>права администратора</b> к @{bot_name}"
+        },
+        "user_accepted": {
+            "en": "Your request to access @{bot_name} was accepted!",
+            "ru": "Ваш запрос на доступ к @{bot_name} был принят!"
+        },
+        "admin_accepted": {
+            "en": "Your request for <b>admin rights</b> to @{bot_name} was accepted!",
+            "ru": "Ваш запрос на <b>права администратора</b> к @{bot_name} был принят!"
         },
         "faq": {
             "en": "FAQ for @{bot_username}:",

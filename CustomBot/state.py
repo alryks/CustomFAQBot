@@ -5,7 +5,7 @@ class State(Enum):
     IDLE = auto()
 
     FAQ = auto()
-    BOOK = auto()
+    CONTACTS = auto()
 
     EDIT_CAPTION = auto()
 

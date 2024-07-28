@@ -33,7 +33,7 @@ def create_faq(faq: list, bot_username: str, caption: str, update: Update, page:
     return text
 
 
-def create_book(users: list, update: Update, page: int = 1) -> str:
+def create_contacts(users: list, update: Update, page: int = 1) -> str:
     n = len(users)
     if n == 0:
         text = Languages.msg("empty", update)
@@ -141,5 +141,5 @@ def filter_faq(faq: list, search: str) -> list:
     return [question for question in faq if search.lower() in question["question"].lower()]
 
 
-def filter_book(users: list, search: str) -> list:
+def filter_contacts(users: list, search: str) -> list:
     return [user for user in users if user.get("name", "") != "" and (search.lower() in user.get("name", "").lower() or search.lower() in user.get("job_title", "").lower() or search.lower() in user.get("unit", "").lower() or search.lower() in user.get("place", "").lower() or search.lower() in user.get("phone", "").lower() or search.lower() in user.get("email", "").lower())]
