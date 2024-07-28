@@ -89,7 +89,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         if bot_id is None:
             await start(update, context)
             return
-        user_id = BotsDb.add_user_with_name(bot_id, update.message.text)
+        user_id = BotsDb.add_user_with_data(bot_id, update.message.text)
         await user(update, context, user_id)
         return
 
@@ -493,12 +493,83 @@ async def user(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: Obje
             message_id=update.effective_message.message_id
         )
 
+    is_merge = True if user_obj.get("tg_id", 0) == 0 else False
+
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=await user_info(user_obj, update, app.bot),
-        reply_markup=keyboards.user(bot_id, user_id, update),
+        reply_markup=keyboards.user(bot_id, user_id, update, is_merge),
         parse_mode=PARSE_MODE,
     )
+
+
+async def user_unmerge(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    data = await callback_check_bot(update, context)
+    if data is None:
+        return
+    bot_id, app = data
+
+    user_id = ObjectId(update.callback_query.data.split(" ")[2])
+
+    if not BotsDb.unmerge_user(bot_id, user_id):
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=Languages.msg("user_not_unmerged", update),
+            parse_mode=PARSE_MODE,
+        )
+
+    await user(update, context, user_id)
+
+
+async def user_merge(update: Update, context: ContextTypes.DEFAULT_TYPE, page: int = 1) -> None:
+    data = await callback_check_bot(update, context)
+    if data is None:
+        return
+    bot_id, app = data
+
+    user_id = ObjectId(update.callback_query.data.split(" ")[2])
+
+    await context.bot.delete_message(
+        chat_id=update.effective_chat.id,
+        message_id=update.effective_message.message_id
+    )
+
+    context.user_data["user_id"] = user_id
+    users = BotsDb.get_users_to_merge(bot_id)
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=Languages.msg("user_merge", update),
+        reply_markup=await keyboards.user_merge(bot_id, user_id, app.bot, users, page, update),
+        parse_mode=PARSE_MODE,
+    )
+
+
+async def user_merge_page(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await user_merge(update, context, int(update.callback_query.data.split(" ")[-1]))
+
+
+async def users_merge(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    data = await callback_check_bot(update, context)
+    if data is None:
+        return
+    bot_id, app = data
+
+    user_id = context.user_data.get("user_id", ObjectId())
+    merge_user_id = ObjectId(update.callback_query.data.split(" ")[2])
+
+    if not BotsDb.merge_id_and_data_users(bot_id, merge_user_id, user_id):
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=Languages.msg("user_not_merged", update),
+            parse_mode=PARSE_MODE,
+        )
+
+    await user(update, context, user_id)
+
+
+async def user_merge_back(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await user(update, context, ObjectId(update.callback_query.data.split(" ")[2]))
 
 
 async def edit_user_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

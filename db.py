@@ -40,6 +40,7 @@ class BotsDb:
     def add_user_with_id(cls, bot_id: ObjectId, user_id: int) -> None:
         for user in cls.bots.find_one({"_id": bot_id}).get("users", []):
             if user.get("tg_id", 0) == user_id:
+                print("User already exists")
                 return
         cls.bots.update_one({"_id": bot_id}, {"$push": {"users": {
             "_id": ObjectId(),
@@ -47,17 +48,17 @@ class BotsDb:
         }}})
 
     @classmethod
-    def add_user_with_name(cls, bot_id: ObjectId, name: str) -> ObjectId:
+    def add_user_with_data(cls, bot_id: ObjectId, name: str, job_title: str = "", unit: str = "", place: str = "", phone: str = "", email: str = "") -> ObjectId:
         user_id = ObjectId()
         cls.bots.update_one({"_id": bot_id}, {"$addToSet": {"users": {
             "_id": user_id,
             "tg_id": 0,
             "name": name,
-            "job_title": "",
-            "unit": "",
-            "place": "",
-            "phone": "",
-            "email": "",
+            "job_title": job_title,
+            "unit": unit,
+            "place": place,
+            "phone": phone,
+            "email": email,
         }}})
         return user_id
 
@@ -68,6 +69,13 @@ class BotsDb:
     @classmethod
     def reset_field(cls, bot_id: ObjectId, user_id: ObjectId, field: str) -> None:
         cls.bots.update_one({"_id": bot_id, "users._id": user_id}, {"$set": {f"users.$.{field}": ""}})
+
+    @classmethod
+    def get_users_to_merge(cls, bot_id: ObjectId) -> [dict]:
+        bot = cls.bots.find_one({"_id": bot_id})
+        users = bot.get("users", [])
+        users = [user for user in users if user.get("tg_id", 0) != 0]
+        return users
 
     @classmethod
     def merge_id_and_data_users(cls, bot_id: ObjectId, id_user: ObjectId, data_user: ObjectId) -> bool:
@@ -88,9 +96,8 @@ class BotsDb:
         if user.get("name", "") == "":
             return False
 
+        cls.bots.update_one({"_id": bot_id, "users._id": user_id}, {"$set": {"users.$.tg_id": 0}})
         cls.add_user_with_id(bot_id, user["tg_id"])
-        user["tg_id"] = 0
-        cls.bots.update_one({"_id": bot_id, "users._id": user_id}, {"$set": user})
         return True
 
 

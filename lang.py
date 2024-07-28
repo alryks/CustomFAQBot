@@ -120,6 +120,18 @@ class Languages:
             "en": "Invalid email!",
             "ru": "Некорректная почта!"
         },
+        "user_not_unmerged": {
+            "en": "User not unmerged!",
+            "ru": "Пользователь не разъединен!"
+        },
+        "user_merge": {
+            "en": "Choose user to merge with:",
+            "ru": "Выберите пользователя для объединения:"
+        },
+        "user_not_merged": {
+            "en": "User not merged!",
+            "ru": "Пользователь не объединен!"
+        },
         "admins": {
             "en": "@{bot_username} admins:",
             "ru": "Администраторы @{bot_username}:"
@@ -317,6 +329,14 @@ class Languages:
         "edit_email": {
             "en": "📧Edit Email",
             "ru": "📧Изменить почту"
+        },
+        "merge": {
+            "en": "🔗Merge",
+            "ru": "🔗Объединить"
+        },
+        "unmerge": {
+            "en": "⛓️Unmerge",
+            "ru": "⛓️Разъединить"
         },
         "admins": {
             "en": "🚨Admins",
