@@ -93,8 +93,8 @@ class Languages:
             "ru": "<i>Телеграм:</i> {telegram}"
         },
         "send_name": {
-            "en": "Send user name:",
-            "ru": "Отправьте имя пользователя:"
+            "en": "Send full name:",
+            "ru": "Отправьте ФИО:"
         },
         "invalid_name": {
             "en": "Invalid user name!",
