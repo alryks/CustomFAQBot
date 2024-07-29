@@ -92,11 +92,11 @@ class Languages:
             "en": "<i>Telegram:</i> {telegram}",
             "ru": "<i>Телеграм:</i> {telegram}"
         },
-        "send_user_name": {
+        "send_name": {
             "en": "Send user name:",
             "ru": "Отправьте имя пользователя:"
         },
-        "invalid_user_name": {
+        "invalid_name": {
             "en": "Invalid user name!",
             "ru": "Некорректное имя пользователя!"
         },
@@ -169,16 +169,20 @@ class Languages:
             "ru": "Вы не являетесь администратором бота!"
         },
         "not_user_request": {
-            "en": "You are not bot user! Requesting access...",
-            "ru": "Вы не являетесь пользователем бота! Запрашиваю доступ..."
+            "en": "Requesting access to bot...",
+            "ru": "Запрашиваю доступ к боту..."
+        },
+        "register": {
+            "en": "To get access to bot, you need to register...",
+            "ru": "Для получения доступа к боту вам необходимо зарегистрироваться..."
         },
         "not_admin_request": {
             "en": "You are not bot admin! Requesting access...",
             "ru": "Вы не являетесь администратором бота! Запрашиваю доступ..."
         },
         "request_user": {
-            "en": "User <b>{name}</b> requested access to @{bot_name}",
-            "ru": "Пользователь <b>{name}</b> запросил доступ к @{bot_name}"
+            "en": "User requested access to @{bot_name} with the following data:\n{data}",
+            "ru": "Пользователь запросил доступ к @{bot_name} со следующими данными:\n{data}"
         },
         "request_admin": {
             "en": "User <b>{name}</b> requested <b>admin rights</b> to @{bot_name}",

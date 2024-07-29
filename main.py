@@ -10,7 +10,7 @@ from CustomBot.custom_bot import CustomBot
 from state import bots
 
 from config import BOT
-from handlers import start, accept, \
+from handlers import start, accept, deny, \
     bot, bot_page, bot_token, message_handler, cancel, \
     bot_private, bot_users, bot_admins, bot_delete, bot_back, \
     user_delete, users_page, users_add, users_back, user, \
@@ -32,6 +32,7 @@ async def main():
         CallbackQueryHandler(callback, "^callback"),
 
         CallbackQueryHandler(accept, "^accept"),
+        CallbackQueryHandler(deny, "^deny"),
 
         CallbackQueryHandler(bot, "^bots_bot"),
         CallbackQueryHandler(bot_page, "^bots_page"),

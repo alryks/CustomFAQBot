@@ -1,3 +1,5 @@
+from typing import Optional
+
 from telegram import Update, Bot
 from telegram.ext import ContextTypes
 
@@ -6,6 +8,23 @@ from telegram import InlineKeyboardButton
 from config import ROWS_PER_PAGE, COLS_PER_PAGE
 
 from lang import Languages
+
+from verify_email import verify_email_async
+import phonenumbers
+
+
+def check_phone(phone: str) -> bool:
+    try:
+        number: Optional[phonenumbers.PhoneNumber] = phonenumbers.parse(phone)
+    except phonenumbers.phonenumberutil.NumberParseException:
+        return False
+    if not phonenumbers.is_valid_number(number):
+        return False
+    return True
+
+
+async def check_email(email: str) -> bool:
+    return await verify_email_async(email)
 
 
 async def callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

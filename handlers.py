@@ -17,9 +17,9 @@ from CustomBot.custom_bot import CustomBot
 
 from lang import Languages
 
-from misc import user_info
+from misc import user_info, check_phone, check_email
 
-import email
+from verify_email import verify_email
 import phonenumbers
 
 
@@ -102,31 +102,59 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         if user_id is None:
             await bot_users(update, context)
             return
+        fields = BotsDb.get_bot(bot_id).get("required_fields", {})
         if context.user_data["state"] == State.EDIT_NAME.name:
-            BotsDb.edit_user(bot_id, user_id, name=update.message.text)
+            if not fields.get("name", False) and update.message.text.strip() == Languages.btn("reset", update):
+                BotsDb.reset_field(bot_id, user_id, "name")
+            else:
+                BotsDb.edit_user(bot_id, user_id, name=update.message.text)
         elif context.user_data["state"] == State.EDIT_JOB.name:
-            if update.message.text.strip() == Languages.btn("reset", update):
+            if not fields.get("job_title", False) and update.message.text.strip() == Languages.btn("reset", update):
                 BotsDb.reset_field(bot_id, user_id, "job_title")
             else:
                 BotsDb.edit_user(bot_id, user_id, job_title=update.message.text)
         elif context.user_data["state"] == State.EDIT_UNIT.name:
-            if update.message.text.strip() == Languages.btn("reset", update):
+            if not fields.get("unit", False) and update.message.text.strip() == Languages.btn("reset", update):
                 BotsDb.reset_field(bot_id, user_id, "unit")
             else:
                 BotsDb.edit_user(bot_id, user_id, unit=update.message.text)
         elif context.user_data["state"] == State.EDIT_PLACE.name:
-            if update.message.text.strip() == Languages.btn("reset", update):
+            if not fields.get("place", False) and update.message.text.strip() == Languages.btn("reset", update):
                 BotsDb.reset_field(bot_id, user_id, "place")
             else:
                 BotsDb.edit_user(bot_id, user_id, place=update.message.text)
         elif context.user_data["state"] == State.EDIT_PHONE.name:
-            if update.message.text.strip() == Languages.btn("reset", update):
+            if not fields.get("phone", False) and update.message.text.strip() == Languages.btn("reset", update):
                 BotsDb.reset_field(bot_id, user_id, "phone")
+            elif not check_phone(update.message.text):
+                await context.bot.send_message(
+                    chat_id=update.effective_chat.id,
+                    text=Languages.msg("invalid_phone", update),
+                    parse_mode=PARSE_MODE,
+                )
+                await context.bot.send_message(
+                    chat_id=update.effective_chat.id,
+                    text=Languages.msg("send_phone", update),
+                    reply_markup=keyboards.reset(update),
+                )
+                return
             else:
                 BotsDb.edit_user(bot_id, user_id, phone=update.message.text)
         elif context.user_data["state"] == State.EDIT_EMAIL.name:
-            if update.message.text.strip() == Languages.btn("reset", update):
+            if not fields.get("email", False) and update.message.text.strip() == Languages.btn("reset", update):
                 BotsDb.reset_field(bot_id, user_id, "email")
+            elif not await check_email(update.message.text):
+                await context.bot.send_message(
+                    chat_id=update.effective_chat.id,
+                    text=Languages.msg("invalid_email", update),
+                    parse_mode=PARSE_MODE,
+                )
+                await context.bot.send_message(
+                    chat_id=update.effective_chat.id,
+                    text=Languages.msg("send_email", update),
+                    reply_markup=keyboards.reset(update),
+                )
+                return
             else:
                 BotsDb.edit_user(bot_id, user_id, email=update.message.text)
         await user(update, context, user_id, delete=False)
@@ -301,10 +329,10 @@ async def accept(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
     bot_id, app = data
 
-    user_id = int(update.callback_query.data.split(" ")[2])
     access_type = update.callback_query.data.split(" ")[0].split("_")[1]
 
     if access_type == "admin":
+        user_id = int(update.callback_query.data.split(" ")[2])
         BotsDb.add_admin(bot_id, user_id)
         await app.bot.send_message(
             chat_id=user_id,
@@ -312,12 +340,30 @@ async def accept(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             parse_mode=PARSE_MODE,
         )
     else:
-        BotsDb.add_user_with_id(bot_id, user_id)
+        user_id = ObjectId(update.callback_query.data.split(" ")[2])
+        BotsDb.set_perm_user(bot_id, user_id)
+        tg_id = BotsDb.get_user(bot_id, user_id).get("tg_id", 0)
         await app.bot.send_message(
-            chat_id=user_id,
+            chat_id=tg_id,
             text=Languages.msg("user_accepted", update).format(bot_name=app.bot.bot.username),
             parse_mode=PARSE_MODE,
         )
+
+    await context.bot.delete_message(
+        chat_id=update.effective_chat.id,
+        message_id=update.effective_message.message_id
+    )
+
+
+async def deny(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    data = await callback_check_bot(update, context)
+    if data is None:
+        return
+    bot_id, app = data
+
+    user_id = ObjectId(update.callback_query.data.split(" ")[2])
+
+    BotsDb.delete_temp_user(bot_id, user_id)
 
     await context.bot.delete_message(
         chat_id=update.effective_chat.id,
@@ -502,7 +548,7 @@ async def users_add(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text=Languages.msg("send_user_name", update),
+        text=Languages.msg("send_name", update),
         reply_markup=keyboards.cancel(update),
         parse_mode=PARSE_MODE,
     )
@@ -627,6 +673,8 @@ async def edit_user_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     context.user_data["bot_id"] = bot_id
     context.user_data["user_id"] = user_id
 
+    is_required = BotsDb.get_bot(bot_id).get("required_fields", {}).get("name", False)
+
     await context.bot.delete_message(
         chat_id=update.effective_chat.id,
         message_id=update.effective_message.message_id
@@ -634,8 +682,8 @@ async def edit_user_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text=Languages.msg("send_user_name", update),
-        reply_markup=keyboards.cancel(update),
+        text=Languages.msg("send_name", update),
+        reply_markup=keyboards.cancel(update) if is_required else keyboards.reset(update),
         parse_mode=PARSE_MODE,
     )
 
@@ -655,6 +703,8 @@ async def edit_job_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     context.user_data["bot_id"] = bot_id
     context.user_data["user_id"] = user_id
 
+    is_required = BotsDb.get_bot(bot_id).get("required_fields", {}).get("job_title", False)
+
     await context.bot.delete_message(
         chat_id=update.effective_chat.id,
         message_id=update.effective_message.message_id
@@ -662,7 +712,7 @@ async def edit_job_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=Languages.msg("send_job_title", update),
-        reply_markup=keyboards.reset(update),
+        reply_markup=keyboards.cancel(update) if is_required else keyboards.reset(update),
         parse_mode=PARSE_MODE,
     )
 
@@ -682,6 +732,8 @@ async def edit_unit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     context.user_data["bot_id"] = bot_id
     context.user_data["user_id"] = user_id
 
+    is_required = BotsDb.get_bot(bot_id).get("required_fields", {}).get("unit", False)
+
     await context.bot.delete_message(
         chat_id=update.effective_chat.id,
         message_id=update.effective_message.message_id
@@ -690,7 +742,7 @@ async def edit_unit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=Languages.msg("send_unit", update),
-        reply_markup=keyboards.reset(update),
+        reply_markup=keyboards.cancel(update) if is_required else keyboards.reset(update),
         parse_mode=PARSE_MODE,
     )
 
@@ -710,6 +762,8 @@ async def edit_place(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     context.user_data["bot_id"] = bot_id
     context.user_data["user_id"] = user_id
 
+    is_required = BotsDb.get_bot(bot_id).get("required_fields", {}).get("place", False)
+
     await context.bot.delete_message(
         chat_id=update.effective_chat.id,
         message_id=update.effective_message.message_id
@@ -718,7 +772,7 @@ async def edit_place(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=Languages.msg("send_place", update),
-        reply_markup=keyboards.reset(update),
+        reply_markup=keyboards.cancel(update) if is_required else keyboards.reset(update),
         parse_mode=PARSE_MODE,
     )
 
@@ -738,6 +792,8 @@ async def edit_phone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     context.user_data["bot_id"] = bot_id
     context.user_data["user_id"] = user_id
 
+    is_required = BotsDb.get_bot(bot_id).get("required_fields", {}).get("phone", False)
+
     await context.bot.delete_message(
         chat_id=update.effective_chat.id,
         message_id=update.effective_message.message_id
@@ -746,7 +802,7 @@ async def edit_phone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=Languages.msg("send_phone", update),
-        reply_markup=keyboards.reset(update),
+        reply_markup=keyboards.cancel(update) if is_required else keyboards.reset(update),
         parse_mode=PARSE_MODE,
     )
 
@@ -766,6 +822,8 @@ async def edit_email(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     context.user_data["bot_id"] = bot_id
     context.user_data["user_id"] = user_id
 
+    is_required = BotsDb.get_bot(bot_id).get("required_fields", {}).get("email", False)
+
     await context.bot.delete_message(
         chat_id=update.effective_chat.id,
         message_id=update.effective_message.message_id
@@ -774,7 +832,7 @@ async def edit_email(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=Languages.msg("send_email", update),
-        reply_markup=keyboards.reset(update),
+        reply_markup=keyboards.cancel(update) if is_required else keyboards.reset(update),
         parse_mode=PARSE_MODE,
     )
 

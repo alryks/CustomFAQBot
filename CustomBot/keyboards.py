@@ -1,3 +1,5 @@
+from typing import Union
+
 from telegram import Update
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram import ReplyKeyboardMarkup
@@ -60,8 +62,8 @@ def faq_edit(question_id: ObjectId, update: Update) -> InlineKeyboardMarkup:
     ])
 
 
-def accept_deny(bot_obj: dict, user_id: int, is_admin=False) -> InlineKeyboardMarkup:
+def accept_deny(bot_obj: dict, user_id: Union[int, ObjectId], is_admin=False) -> InlineKeyboardMarkup:
     access_type = "admin" if is_admin else "user"
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("✅", callback_data=f"accept_{access_type} {bot_obj['_id']} {user_id}"), InlineKeyboardButton("❌", callback_data="cancel")]
+        [InlineKeyboardButton("✅", callback_data=f"accept_{access_type} {bot_obj['_id']} {user_id}"), InlineKeyboardButton("❌", callback_data=f"deny {bot_obj['_id']} {user_id}")],
     ])

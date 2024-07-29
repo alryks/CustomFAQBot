@@ -105,7 +105,7 @@ class BotsDb:
         }}})
 
     @classmethod
-    def add_user_with_data(cls, bot_id: ObjectId, name: str, job_title: str = "", unit: str = "", place: str = "", phone: str = "", email: str = "") -> ObjectId:
+    def add_user_with_data(cls, bot_id: ObjectId, name: str = "", job_title: str = "", unit: str = "", place: str = "", phone: str = "", email: str = "") -> ObjectId:
         user_id = ObjectId()
         cls.bots.update_one({"_id": bot_id}, {"$addToSet": {"users": {
             "_id": user_id,
@@ -118,6 +118,36 @@ class BotsDb:
             "email": email,
         }}})
         return user_id
+
+    @classmethod
+    def add_temp_user(cls, bot_id: ObjectId, user_id: int, name: str = "", job_title: str = "", unit: str = "", place: str = "", phone: str = "", email: str = "") -> ObjectId:
+        user_oid = ObjectId()
+        cls.bots.update_one({"_id": bot_id}, {"$addToSet": {"users": {
+            "_id": user_oid,
+            "tg_id": user_id,
+            "name": name,
+            "job_title": job_title,
+            "unit": unit,
+            "place": place,
+            "phone": phone,
+            "email": email,
+            "is_temp": True,
+        }}})
+        return user_oid
+
+    @classmethod
+    def set_perm_user(cls, bot_id: ObjectId, user_id: ObjectId) -> None:
+        cls.bots.update_one({"_id": bot_id, "users._id": user_id}, {"$unset": {"users.$.is_temp": ""}})
+
+    @classmethod
+    def delete_temp_user(cls, bot_id: ObjectId, user_id: ObjectId) -> None:
+        bot_obj = cls.bots.find_one({"_id": bot_id, "users._id": user_id, "users.is_temp": True}, {"users.$": 1})
+        if bot_obj is None:
+            return
+        users = bot_obj.get("users", [])
+        if not users:
+            return
+        cls.bots.update_one({"_id": bot_id}, {"$pull": {"users": {"_id": user_id}}})
 
     @classmethod
     def edit_user(cls, bot_id: ObjectId, user_id: ObjectId, **kwargs) -> None:

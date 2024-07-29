@@ -1,3 +1,5 @@
+from typing import Optional
+
 from telegram import Update
 from telegram.ext import ContextTypes
 
@@ -12,31 +14,59 @@ from db import BotsDb
 
 from .state import State
 
-from misc import create_faq, filter_faq, create_contacts, filter_contacts, user_info
+from misc import create_faq, filter_faq, create_contacts, filter_contacts, user_info, check_phone, check_email
 
 from lang import Languages
 
 
 async def check_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
-    if BotsDb.is_user(BotsDb.get_bot_by_id(context.bot.id)["_id"], update.effective_user.id):
+    bot_obj = BotsDb.get_bot_by_id(context.bot.id)
+    if BotsDb.is_user(bot_obj["_id"], update.effective_user.id):
         return True
+
+    required_fields = bot_obj.get("required_fields", {})
+    first_field: Optional[str] = None
+    for field in required_fields:
+        if required_fields[field]:
+            first_field = field
+            break
+
+    if first_field is None:
+        user_id = BotsDb.add_temp_user(bot_obj["_id"], update.effective_user.id)
+
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=Languages.msg("not_user_request", update),
+            parse_mode=PARSE_MODE,
+        )
+
+        username = update.effective_user.full_name + (f" @{update.effective_user.username}" if update.effective_user.username else "")
+        data = Languages.msg("telegram", update).format(telegram=username)
+
+        for admin in bot_obj["admins"]:
+            await BOT.app.bot.send_message(
+                chat_id=admin,
+                text=Languages.msg("request_user", update).format(
+                    bot_name=context.bot.bot.username, data=data),
+                reply_markup=keyboards.accept_deny(bot_obj, user_id),
+                parse_mode=PARSE_MODE,
+            )
+        return False
+
+    context.user_data["state"] = State[first_field.upper()].name
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text=Languages.msg("not_user_request", update),
+        text=Languages.msg("register", update),
         parse_mode=PARSE_MODE,
     )
 
-    name = update.effective_user.full_name + (f" @{update.effective_user.username}" if update.effective_user.username else "")
-    bot_obj = BotsDb.get_bot_by_id(context.bot.id)
-
-    for admin in bot_obj["admins"]:
-        await BOT.app.bot.send_message(
-            chat_id=admin,
-            text=Languages.msg("request_user", update).format(name=name, bot_name=context.bot.bot.username),
-            reply_markup=keyboards.accept_deny(bot_obj, update.effective_user.id),
-            parse_mode=PARSE_MODE,
-        )
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=Languages.msg("send_" + first_field, update),
+        reply_markup=cancel(update),
+        parse_mode=PARSE_MODE,
+    )
 
     return False
 
@@ -115,8 +145,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         parse_mode=PARSE_MODE,
     )
 
-    if not await check_user(update, context):
-        return
+    await check_user(update, context)
 
 
 async def edit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -304,7 +333,95 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             await edit_faq(update, context)
             return
 
-    if not await check_user(update, context):
+    bot_obj = BotsDb.get_bot_by_id(context.bot.id)
+
+    if not BotsDb.is_user(bot_obj["_id"], update.effective_user.id):
+        if context.user_data.get("state", None) in [State.NAME.name, State.JOB_TITLE.name, State.UNIT.name, State.PLACE.name, State.PHONE.name, State.EMAIL.name]:
+            if update.message.text == Languages.btn("cancel", update):
+                context.user_data["state"] = State.IDLE.name
+                return
+            field = State[context.user_data["state"]].name.lower()
+            if update.message.text is None or update.message.text.strip() == "":
+                await context.bot.send_message(
+                    chat_id=update.effective_chat.id,
+                    text=Languages.msg("invalid_" + field, update),
+                    parse_mode=PARSE_MODE,
+                )
+                await context.bot.send_message(
+                    chat_id=update.effective_chat.id,
+                    text=Languages.msg("send_" + field, update),
+                    reply_markup=cancel(update),
+                    parse_mode=PARSE_MODE,
+                )
+            else:
+                if (context.user_data.get("state", None) == State.PHONE.name and not check_phone(update.message.text) or
+                        context.user_data.get("state", None) == State.EMAIL.name and not await check_email(update.message.text)):
+                    await context.bot.send_message(
+                        chat_id=update.effective_chat.id,
+                        text=Languages.msg("invalid_" + field, update),
+                        parse_mode=PARSE_MODE,
+                    )
+                    await context.bot.send_message(
+                        chat_id=update.effective_chat.id,
+                        text=Languages.msg("send_" + field, update),
+                        reply_markup=cancel(update),
+                        parse_mode=PARSE_MODE,
+                    )
+                    return
+                context.user_data[field] = update.message.text
+                start_search = False
+                next_field: Optional[str] = None
+                for fld in bot_obj.get("required_fields", {}):
+                    if fld == field:
+                        start_search = True
+                    elif start_search and bot_obj["required_fields"][fld]:
+                        next_field = fld
+                        break
+                if next_field is not None:
+                    context.user_data["state"] = State[next_field.upper()].name
+                    await context.bot.send_message(
+                        chat_id=update.effective_chat.id,
+                        text=Languages.msg("send_" + next_field, update),
+                        reply_markup=cancel(update),
+                        parse_mode=PARSE_MODE,
+                    )
+                    return
+
+                fields = {
+                    fld: context.user_data.get(fld, "") for fld in bot_obj.get("required_fields", {})
+                }
+                data = ""
+                for fld in fields:
+                    if fields[fld] == "" and bot_obj["required_fields"][fld]:
+                        await start(update, context)
+                        return
+                    elif fields[fld] != "":
+                        data += Languages.msg(fld, update).format(**{fld: fields[fld]}) + "\n"
+                username = update.effective_user.full_name + (f" @{update.effective_user.username}" if update.effective_user.username else "")
+                data += Languages.msg("telegram", update).format(telegram=username)
+
+                user_id = BotsDb.add_temp_user(bot_obj["_id"], update.effective_user.id, **fields)
+
+                await context.bot.send_message(
+                    chat_id=update.effective_chat.id,
+                    text=Languages.msg("not_user_request", update),
+                    parse_mode=PARSE_MODE,
+                )
+
+                for admin in bot_obj["admins"]:
+                    await BOT.app.bot.send_message(
+                        chat_id=admin,
+                        text=Languages.msg("request_user", update).format(bot_name=context.bot.bot.username, data=data),
+                        reply_markup=keyboards.accept_deny(bot_obj, user_id),
+                        parse_mode=PARSE_MODE,
+                    )
+
+        else:
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text=Languages.msg("dont_understand", update),
+                parse_mode=PARSE_MODE,
+            )
         return
 
     context.user_data["search"] = update.message.text if update.message.text else ""
