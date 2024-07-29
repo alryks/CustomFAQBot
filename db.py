@@ -16,6 +16,63 @@ class BotsDb:
     bots.create_index("bot_id", unique=True)
 
     @classmethod
+    def get_bot(cls, bot_id: ObjectId) -> dict:
+        return cls.bots.find_one({"_id": bot_id})
+
+    @classmethod
+    def get_bot_by_id(cls, bot_id: int) -> dict:
+        return cls.bots.find_one({"bot_id": bot_id})
+
+    @classmethod
+    def get_bots(cls) -> [str]:
+        return cls.bots.find({})
+
+    @classmethod
+    async def get_user_bot_usernames(cls, user_id: int) -> [(ObjectId, str)]:
+        bot_ids = cls.bots.distinct("_id", {"admins": user_id})
+        usernames = []
+        for bot_id in bot_ids:
+            if bot_id not in bots:
+                continue
+            app: Application = bots[bot_id].app
+            if app is None:
+                bots.pop(bot_id)
+                continue
+            try:
+                usernames.append((bot_id, app.bot.bot.username))
+            except:
+                continue
+        return usernames
+
+    @classmethod
+    def add_bot(cls, bot_id: int, bot_token: str, admin: int) -> Optional[
+        ObjectId]:
+        try:
+            return cls.bots.insert_one({"bot_id": bot_id,
+                                        "bot_token": bot_token,
+                                        "admins": [admin],
+                                        "is_private": False,
+                                        "users": [],
+                                        "caption": "",
+                                        "faq": [],
+                                        }).inserted_id
+        except DuplicateKeyError:
+            return None
+
+    @classmethod
+    def edit_token(cls, bot_id: ObjectId, bot_token: str) -> None:
+        cls.bots.update_one({"_id": bot_id},
+                            {"$set": {"bot_token": bot_token}})
+
+    @classmethod
+    def toggle_private(cls, bot_id: ObjectId) -> None:
+        bot = cls.bots.find_one({"_id": bot_id})
+        if bot is None:
+            return
+        cls.bots.update_one({"_id": bot_id},
+                            {"$set": {"is_private": not bot["is_private"]}})
+
+    @classmethod
     def is_admin(cls, bot_id: ObjectId, user_id: int) -> bool:
         bot = cls.bots.find_one({"_id": bot_id})
         if bot and user_id in bot.get("admins", []):
@@ -100,7 +157,6 @@ class BotsDb:
         cls.add_user_with_id(bot_id, user["tg_id"])
         return True
 
-
     @classmethod
     def get_user(cls, bot_id: ObjectId, user_id: ObjectId) -> Optional[dict]:
         bot_obj = cls.bots.find_one({"_id": bot_id, "users._id": user_id}, {"users.$": 1})
@@ -110,58 +166,13 @@ class BotsDb:
             return bot_obj["users"][0]
 
     @classmethod
-    def get_bot(cls, bot_id: ObjectId) -> dict:
-        return cls.bots.find_one({"_id": bot_id})
-
-    @classmethod
-    def get_bot_by_id(cls, bot_id: int) -> dict:
-        return cls.bots.find_one({"bot_id": bot_id})
-
-    @classmethod
-    def get_bots(cls) -> [str]:
-        return cls.bots.find({})
-
-    @classmethod
-    async def get_user_bot_usernames(cls, user_id: int) -> [(ObjectId, str)]:
-        bot_ids = cls.bots.distinct("_id", {"admins": user_id})
-        usernames = []
-        for bot_id in bot_ids:
-            if bot_id not in bots:
-                continue
-            app: Application = bots[bot_id].app
-            if app is None:
-                bots.pop(bot_id)
-                continue
-            try:
-                usernames.append((bot_id, app.bot.bot.username))
-            except:
-                continue
-        return usernames
-
-    @classmethod
-    def add_bot(cls, bot_id: int, bot_token: str, admin: int) -> Optional[ObjectId]:
-        try:
-            return cls.bots.insert_one({"bot_id": bot_id,
-                                        "bot_token": bot_token,
-                                        "admins": [admin],
-                                        "is_private": False,
-                                        "users": [],
-                                        "caption": "",
-                                        "faq": [],
-                                        }).inserted_id
-        except DuplicateKeyError:
-            return None
-
-    @classmethod
-    def edit_token(cls, bot_id: ObjectId, bot_token: str) -> None:
-        cls.bots.update_one({"_id": bot_id}, {"$set": {"bot_token": bot_token}})
-
-    @classmethod
-    def toggle_private(cls, bot_id: ObjectId) -> None:
+    def toggle_required(cls, bot_id: ObjectId, field: str) -> None:
         bot = cls.bots.find_one({"_id": bot_id})
         if bot is None:
             return
-        cls.bots.update_one({"_id": bot_id}, {"$set": {"is_private": not bot["is_private"]}})
+        if "required_fields" not in bot:
+            return
+        cls.bots.update_one({"_id": bot_id}, {"$set": {f"required_fields.{field}": not bot["required_fields"].get(field, False)}})
 
     @classmethod
     def delete_bot(cls, bot_id: ObjectId) -> None:

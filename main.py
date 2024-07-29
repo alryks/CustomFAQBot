@@ -16,6 +16,7 @@ from handlers import start, accept, \
     user_delete, users_page, users_add, users_back, user, \
     edit_user_name, edit_job_title, edit_unit, edit_place, edit_phone, edit_email, user_back, \
     user_unmerge, user_merge, user_merge_page, user_merge_back, users_merge, \
+    bot_required, required_field, required_back, \
     admin_delete, admins_back
 
 
@@ -62,6 +63,10 @@ async def main():
         CallbackQueryHandler(user_merge_back, "^merge_back"),
         CallbackQueryHandler(user_merge, "^user_merge"),
         CallbackQueryHandler(users_merge, "^users_merge"),
+
+        CallbackQueryHandler(bot_required, "^bot_required"),
+        CallbackQueryHandler(required_back, "^required_back"),
+        CallbackQueryHandler(required_field, "^required_"),
 
         CallbackQueryHandler(user, "^user"),
 

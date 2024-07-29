@@ -408,6 +408,46 @@ async def bot_admins(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     )
 
 
+async def bot_required(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    data = await callback_check_bot(update, context)
+    if data is None:
+        return
+    bot_id, app = data
+
+    await context.bot.delete_message(
+        chat_id=update.effective_chat.id,
+        message_id=update.effective_message.message_id
+    )
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=Languages.msg("required", update),
+        reply_markup=keyboards.required(BotsDb.get_bot(bot_id), update),
+        parse_mode=PARSE_MODE,
+    )
+
+
+async def required_field(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    data = await callback_check_bot(update, context)
+    if data is None:
+        return
+    bot_id, app = data
+
+    field = "_".join(update.callback_query.data.split(" ")[0].split("_")[1:])
+
+    if field == "name":
+        await update.callback_query.answer(Languages.msg("name_is_required", update))
+        return
+
+    BotsDb.toggle_required(bot_id, field)
+
+    await bot_required(update, context)
+
+
+async def required_back(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await bot(update, context)
+
+
 async def bot_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     data = await callback_check_bot(update, context)
     if data is None:

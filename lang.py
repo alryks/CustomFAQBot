@@ -32,6 +32,26 @@ class Languages:
             "en": "Your @{bot_username}:",
             "ru": "Ваш @{bot_username}:"
         },
+        "send_token": {
+            "en": "Send token of your bot:",
+            "ru": "Отправьте токен вашего бота:"
+        },
+        "invalid_token": {
+            "en": "Invalid token!",
+            "ru": "Некорректный токен!"
+        },
+        "bot_not_found": {
+            "en": "Bot not found!",
+            "ru": "Бот не найден!"
+        },
+        "token_doesnt_match": {
+            "en": "Token doesn't match the bot!",
+            "ru": "Токен не соответствует боту!"
+        },
+        "bot_exists": {
+            "en": "Bot already exists!",
+            "ru": "Бот уже существует!"
+        },
         "users": {
             "en": "@{bot_username} users:",
             "ru": "Пользователи @{bot_username}:"
@@ -136,25 +156,13 @@ class Languages:
             "en": "@{bot_username} admins:",
             "ru": "Администраторы @{bot_username}:"
         },
-        "send_token": {
-            "en": "Send token of your bot:",
-            "ru": "Отправьте токен вашего бота:"
+        "required": {
+            "en": "Required fields:",
+            "ru": "Обязательные поля:"
         },
-        "invalid_token": {
-            "en": "Invalid token!",
-            "ru": "Некорректный токен!"
-        },
-        "bot_not_found": {
-            "en": "Bot not found!",
-            "ru": "Бот не найден!"
-        },
-        "token_doesnt_match": {
-            "en": "Token doesn't match the bot!",
-            "ru": "Токен не соответствует боту!"
-        },
-        "bot_exists": {
-            "en": "Bot already exists!",
-            "ru": "Бот уже существует!"
+        "name_is_required": {
+            "en": "Name is required!",
+            "ru": "Имя обязательно!"
         },
         "not_admin": {
             "en": "You are not bot admin!",
@@ -341,6 +349,34 @@ class Languages:
         "admins": {
             "en": "🚨Admins",
             "ru": "🚨Администраторы"
+        },
+        "required": {
+            "en": "🔐Required fields",
+            "ru": "🔐Обязательные поля"
+        },
+        "required_name": {
+            "en": "🏷️Name: {status}",
+            "ru": "🏷️Имя: {status}"
+        },
+        "required_job_title": {
+            "en": "💼Job Title: {status}",
+            "ru": "💼Должность: {status}"
+        },
+        "required_unit": {
+            "en": "🏢Unit: {status}",
+            "ru": "🏢Подразделение: {status}"
+        },
+        "required_place": {
+            "en": "📍Place: {status}",
+            "ru": "📍Место работы: {status}"
+        },
+        "required_phone": {
+            "en": "📞Phone: {status}",
+            "ru": "📞Телефон: {status}"
+        },
+        "required_email": {
+            "en": "📧Email: {status}",
+            "ru": "📧Почта: {status}"
         },
         "delete": {
             "en": "❌Delete",

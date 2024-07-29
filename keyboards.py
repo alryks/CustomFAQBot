@@ -38,8 +38,25 @@ def bot(bot_obj: dict, update: Update) -> InlineKeyboardMarkup:
         private.append(InlineKeyboardButton(Languages.kbd("users", update), callback_data=f"bot_users {bot_obj['_id']}"))
     keyboard.append(private)
     keyboard.append([InlineKeyboardButton(Languages.kbd("admins", update), callback_data=f"bot_admins {bot_obj['_id']}")])
+    keyboard.append([InlineKeyboardButton(Languages.kbd("required", update), callback_data=f"bot_required {bot_obj['_id']}")])
     keyboard.append([InlineKeyboardButton(Languages.kbd("delete", update), callback_data=f"bot_delete {bot_obj['_id']}")])
     keyboard.append([InlineKeyboardButton(Languages.kbd("back", update), callback_data="bot_back")])
+
+    return InlineKeyboardMarkup(keyboard)
+
+
+def required(bot_obj: dict, update: Update) -> InlineKeyboardMarkup:
+    keyboard = []
+    row = []
+    for field, value in bot_obj["required_fields"].items():
+        row.append(InlineKeyboardButton(Languages.kbd(f"required_{field}", update).format(status="✅" if value else "❌"), callback_data=f"required_{field} {bot_obj['_id']}"))
+        if len(row) == 2:
+            keyboard.append(row)
+            row = []
+    if row:
+        keyboard.append(row)
+
+    keyboard.append([InlineKeyboardButton(Languages.kbd("back", update), callback_data=f"required_back {bot_obj['_id']}")])
 
     return InlineKeyboardMarkup(keyboard)
 
@@ -103,6 +120,7 @@ async def user_merge(bot_id: ObjectId, user_id: ObjectId, bot: ExtBot, users: [d
     keyboard.append([InlineKeyboardButton(Languages.kbd("back", update), callback_data=f"merge_back {bot_id} {user_id}")])
 
     return InlineKeyboardMarkup(keyboard)
+
 
 def reset(update: Update) -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup([[Languages.btn("reset", update)], [Languages.btn("cancel", update)]],
