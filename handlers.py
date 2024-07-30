@@ -361,6 +361,11 @@ async def deny(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
     bot_id, app = data
 
+    access_type = update.callback_query.data.split(" ")[0].split("_")[1]
+    if access_type == "admin":
+        await cancel(update, context)
+        return
+
     user_id = ObjectId(update.callback_query.data.split(" ")[2])
 
     BotsDb.delete_temp_user(bot_id, user_id)
