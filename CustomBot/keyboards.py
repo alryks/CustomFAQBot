@@ -62,8 +62,7 @@ def faq_edit(question_id: ObjectId, update: Update) -> InlineKeyboardMarkup:
     ])
 
 
-def accept_deny(bot_obj: dict, user_id: Union[int, ObjectId], is_admin=False) -> InlineKeyboardMarkup:
-    access_type = "admin" if is_admin else "user"
+def accept_deny(bot_obj: dict, user_id: Union[int, ObjectId]) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("✅", callback_data=f"accept_{access_type} {bot_obj['_id']} {user_id}"), InlineKeyboardButton("❌", callback_data=f"deny_{access_type} {bot_obj['_id']} {user_id}")],
+        [InlineKeyboardButton("✅", callback_data=f"accept {bot_obj['_id']} {user_id}"), InlineKeyboardButton("❌", callback_data=f"deny {bot_obj['_id']} {user_id}")],
     ])

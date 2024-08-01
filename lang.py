@@ -152,10 +152,6 @@ class Languages:
             "en": "User not merged!",
             "ru": "Пользователь не объединен!"
         },
-        "admins": {
-            "en": "@{bot_username} admins:",
-            "ru": "Администраторы @{bot_username}:"
-        },
         "required": {
             "en": "Required fields:",
             "ru": "Обязательные поля:"
@@ -176,25 +172,21 @@ class Languages:
             "en": "To get access to bot, you need to register...",
             "ru": "Для получения доступа к боту вам необходимо зарегистрироваться..."
         },
-        "not_admin_request": {
-            "en": "You are not bot admin! Requesting access...",
-            "ru": "Вы не являетесь администратором бота! Запрашиваю доступ..."
-        },
         "request_user": {
             "en": "User requested access to @{bot_name} with the following data:\n{data}",
             "ru": "Пользователь запросил доступ к @{bot_name} со следующими данными:\n{data}"
         },
-        "request_admin": {
-            "en": "User <b>{name}</b> requested <b>admin rights</b> to @{bot_name}",
-            "ru": "Пользователь <b>{name}</b> запросил <b>права администратора</b> к @{bot_name}"
+        "already_requested": {
+            "en": "You have already requested access to @{bot_name}!",
+            "ru": "Вы уже запросили доступ к @{bot_name}!"
         },
         "user_accepted": {
             "en": "Your request to access @{bot_name} was accepted!",
             "ru": "Ваш запрос на доступ к @{bot_name} был принят!"
         },
-        "admin_accepted": {
-            "en": "Your request for <b>admin rights</b> to @{bot_name} was accepted!",
-            "ru": "Ваш запрос на <b>права администратора</b> к @{bot_name} был принят!"
+        "user_denied": {
+            "en": "Your request to access @{bot_name} was denied!",
+            "ru": "Ваш запрос на доступ к @{bot_name} был отклонен!"
         },
         "faq": {
             "en": "FAQ for @{bot_username}:",
@@ -342,6 +334,10 @@ class Languages:
             "en": "📧Edit Email",
             "ru": "📧Изменить почту"
         },
+        "user_admin": {
+            "en": "🚨Admin: {admin}",
+            "ru": "🚨Админ: {admin}"
+        },
         "merge": {
             "en": "🔗Merge",
             "ru": "🔗Объединить"
@@ -349,10 +345,6 @@ class Languages:
         "unmerge": {
             "en": "⛓️Unmerge",
             "ru": "⛓️Разъединить"
-        },
-        "admins": {
-            "en": "🚨Admins",
-            "ru": "🚨Администраторы"
         },
         "required": {
             "en": "🔐Required fields",

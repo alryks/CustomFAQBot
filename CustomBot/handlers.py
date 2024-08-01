@@ -24,6 +24,14 @@ async def check_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool
     if BotsDb.is_user(bot_obj["_id"], update.effective_user.id):
         return True
 
+    if BotsDb.is_temp_user_id(bot_obj["_id"], update.effective_user.id):
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=Languages.msg("already_requested", update).format(bot_name=context.bot.bot.username),
+            parse_mode=PARSE_MODE,
+        )
+        return False
+
     required_fields = bot_obj.get("required_fields", {})
     first_field: Optional[str] = None
     for field in required_fields:
@@ -43,7 +51,7 @@ async def check_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool
         username = update.effective_user.full_name + (f" @{update.effective_user.username}" if update.effective_user.username else "")
         data = Languages.msg("telegram", update).format(telegram=username)
 
-        for admin in bot_obj["admins"]:
+        for admin in BotsDb.get_admin_ids(bot_obj["_id"]):
             await BOT.app.bot.send_message(
                 chat_id=admin,
                 text=Languages.msg("request_user", update).format(
@@ -77,20 +85,9 @@ async def check_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> boo
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text=Languages.msg("not_admin_request", update),
+        text=Languages.msg("not_admin", update),
         parse_mode=PARSE_MODE,
     )
-
-    name = update.effective_user.full_name + (f" @{update.effective_user.username}" if update.effective_user.username else "")
-    bot_obj = BotsDb.get_bot_by_id(context.bot.id)
-
-    for admin in bot_obj["admins"]:
-        await BOT.app.bot.send_message(
-            chat_id=admin,
-            text=Languages.msg("request_admin", update).format(name=name, bot_name=context.bot.bot.username),
-            reply_markup=keyboards.accept_deny(bot_obj, update.effective_user.id, is_admin=True),
-            parse_mode=PARSE_MODE,
-        )
 
     return False
 
@@ -408,7 +405,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                     parse_mode=PARSE_MODE,
                 )
 
-                for admin in bot_obj["admins"]:
+                for admin in BotsDb.get_admin_ids(bot_obj["_id"]):
                     await BOT.app.bot.send_message(
                         chat_id=admin,
                         text=Languages.msg("request_user", update).format(bot_name=context.bot.bot.username, data=data),

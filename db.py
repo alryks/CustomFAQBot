@@ -29,7 +29,8 @@ class BotsDb:
 
     @classmethod
     async def get_user_bot_usernames(cls, user_id: int) -> [(ObjectId, str)]:
-        bot_ids = cls.bots.distinct("_id", {"admins": user_id})
+        # get bot ids, where users.tg_id == user_id and users.is_admin == True
+        bot_ids = cls.bots.distinct("_id", {"users.tg_id": user_id, "users.is_admin": True})
         usernames = []
         for bot_id in bot_ids:
             if bot_id not in bots:
@@ -45,17 +46,17 @@ class BotsDb:
         return usernames
 
     @classmethod
-    def add_bot(cls, bot_id: int, bot_token: str, admin: int) -> Optional[
-        ObjectId]:
+    def add_bot(cls, bot_id: int, bot_token: str, admin: int) -> Optional[ObjectId]:
         try:
-            return cls.bots.insert_one({"bot_id": bot_id,
+            bot_obj_id = cls.bots.insert_one({"bot_id": bot_id,
                                         "bot_token": bot_token,
-                                        "admins": [admin],
                                         "is_private": False,
                                         "users": [],
                                         "caption": "",
                                         "faq": [],
                                         }).inserted_id
+            cls.add_user_with_id(bot_obj_id, admin, is_admin=True)
+
         except DuplicateKeyError:
             return None
 
@@ -74,34 +75,60 @@ class BotsDb:
 
     @classmethod
     def is_admin(cls, bot_id: ObjectId, user_id: int) -> bool:
-        bot = cls.bots.find_one({"_id": bot_id})
-        if bot and user_id in bot.get("admins", []):
+        users = cls.bots.find_one({"_id": bot_id, "users.tg_id": user_id, "users.is_admin": True}, {"users.$": 1})
+        if users is not None and users.get("users"):
             return True
         return False
 
     @classmethod
-    def add_admin(cls, bot_id: ObjectId, user_id: int) -> None:
-        cls.bots.update_one({"_id": bot_id}, {"$addToSet": {"admins": user_id}})
+    def get_admin_ids(cls, bot_id: ObjectId) -> [dict]:
+        bot = cls.bots.find_one({"_id": bot_id, "users.is_admin": True}, {"users.$": 1})
+        if bot is None:
+            return []
+        users = bot.get("users", [])
+        return [user.get("tg_id", 0) for user in users]
 
     @classmethod
     def is_user(cls, bot_id: ObjectId, user_id: int) -> bool:
+        # get all users from bot_id, where is_temp is unset
         bot = cls.bots.find_one({"_id": bot_id})
-        user_ids = [user["tg_id"] for user in bot.get("users", [])]
+        users_bot = cls.bots.find_one({"_id": bot_id, "users.is_temp": {"$exists": False}})
+        if users_bot is None:
+            return False
+        users = users_bot.get("users", [])
+        user_ids = [user.get("tg_id", 0) for user in users]
+        print(user_ids)
+        admin_ids = cls.get_admin_ids(bot_id)
+        print(admin_ids)
         if bot and (not bot.get("is_private", False) or
                     user_id in user_ids or
-                    user_id in bot.get("admins", [])):
+                    user_id in admin_ids):
             return True
         return False
 
     @classmethod
-    def add_user_with_id(cls, bot_id: ObjectId, user_id: int) -> None:
+    def is_temp_user_id(cls, bot_id: ObjectId, user_id: int) -> bool:
+        bot = cls.bots.find_one({"_id": bot_id, "users.tg_id": user_id, "users.is_temp": True})
+        if bot is not None:
+            return True
+        return False
+
+    @classmethod
+    def is_temp_user(cls, bot_id: ObjectId, user_id: ObjectId) -> bool:
+        bot = cls.bots.find_one({"_id": bot_id, "users._id": user_id, "users.is_temp": True})
+        if bot is not None:
+            return True
+        return False
+
+    @classmethod
+    def add_user_with_id(cls, bot_id: ObjectId, user_id: int, is_admin: bool = False) -> None:
         for user in cls.bots.find_one({"_id": bot_id}).get("users", []):
             if user.get("tg_id", 0) == user_id:
-                print("User already exists")
                 return
         cls.bots.update_one({"_id": bot_id}, {"$push": {"users": {
             "_id": ObjectId(),
             "tg_id": user_id,
+            "is_admin": is_admin,
         }}})
 
     @classmethod
@@ -110,6 +137,7 @@ class BotsDb:
         cls.bots.update_one({"_id": bot_id}, {"$addToSet": {"users": {
             "_id": user_id,
             "tg_id": 0,
+            "is_admin": False,
             "name": name,
             "job_title": job_title,
             "unit": unit,
@@ -125,6 +153,7 @@ class BotsDb:
         cls.bots.update_one({"_id": bot_id}, {"$addToSet": {"users": {
             "_id": user_oid,
             "tg_id": user_id,
+            "is_admin": False,
             "name": name,
             "job_title": job_title,
             "unit": unit,
@@ -158,10 +187,17 @@ class BotsDb:
         cls.bots.update_one({"_id": bot_id, "users._id": user_id}, {"$set": {f"users.$.{field}": ""}})
 
     @classmethod
+    def toggle_admin(cls, bot_id: ObjectId, user_id: ObjectId) -> None:
+        users = cls.bots.find_one({"_id": bot_id, "users._id": user_id}, {"users.$": 1}).get("users", [])
+        if not users:
+            return
+        cls.bots.update_one({"_id": bot_id, "users._id": user_id}, {"$set": {"users.$.is_admin": not users[0].get("is_admin", False)}})
+
+    @classmethod
     def get_users_to_merge(cls, bot_id: ObjectId) -> [dict]:
         bot = cls.bots.find_one({"_id": bot_id})
         users = bot.get("users", [])
-        users = [user for user in users if user.get("tg_id", 0) != 0]
+        users = [user for user in users if user.get("tg_id", 0) != 0 and user.get("is_temp", False) is False]
         return users
 
     @classmethod
@@ -235,7 +271,3 @@ class BotsDb:
     @classmethod
     def delete_user(cls, bot_id: ObjectId, id: ObjectId) -> None:
         cls.bots.update_one({"_id": bot_id}, {"$pull": {"users": {"_id": id}}})
-
-    @classmethod
-    def delete_admin(cls, bot_id: ObjectId, admin_id: int) -> None:
-        cls.bots.update_one({"_id": bot_id}, {"$pull": {"admins": admin_id}})

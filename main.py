@@ -12,12 +12,12 @@ from state import bots
 from config import BOT
 from handlers import start, accept, deny, \
     bot, bot_page, bot_token, message_handler, cancel, \
-    bot_private, bot_users, bot_admins, bot_delete, bot_back, \
-    user_delete, users_page, users_add, users_back, user, \
+    bot_private, bot_users, bot_delete, bot_back, \
+    users_page, users_add, users_back, user, \
     edit_user_name, edit_job_title, edit_unit, edit_place, edit_phone, edit_email, user_back, \
+    user_delete, user_admin, \
     user_unmerge, user_merge, user_merge_page, user_merge_back, users_merge, \
-    bot_required, required_field, required_back, \
-    admin_delete, admins_back
+    bot_required, required_field, required_back
 
 
 async def main():
@@ -42,11 +42,9 @@ async def main():
         CallbackQueryHandler(bot_token, "^bot_edit"),
         CallbackQueryHandler(bot_private, "^bot_private"),
         CallbackQueryHandler(bot_users, "^bot_users"),
-        CallbackQueryHandler(bot_admins, "^bot_admins"),
         CallbackQueryHandler(bot_delete, "^bot_delete"),
         CallbackQueryHandler(bot_back, "bot_back"),
 
-        CallbackQueryHandler(user_delete, "^user_delete"),
         CallbackQueryHandler(users_page, "^users_page"),
         CallbackQueryHandler(users_add, "^users_add"),
         CallbackQueryHandler(users_back, "^users_back"),
@@ -57,6 +55,8 @@ async def main():
         CallbackQueryHandler(edit_place, "^user_place"),
         CallbackQueryHandler(edit_phone, "^user_phone"),
         CallbackQueryHandler(edit_email, "^user_email"),
+        CallbackQueryHandler(user_admin, "^user_admin"),
+        CallbackQueryHandler(user_delete, "^user_delete"),
         CallbackQueryHandler(user_back, "^user_back"),
 
         CallbackQueryHandler(user_unmerge, "^user_unmerge"),
@@ -70,9 +70,6 @@ async def main():
         CallbackQueryHandler(required_field, "^required_"),
 
         CallbackQueryHandler(user, "^user"),
-
-        CallbackQueryHandler(admin_delete, "^admin_delete"),
-        CallbackQueryHandler(admins_back, "^admins_back"),
 
         MessageHandler(filters.ALL, message_handler)
     ]
