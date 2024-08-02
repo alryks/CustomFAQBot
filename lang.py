@@ -173,28 +173,32 @@ class Languages:
             "ru": "Для получения доступа к боту вам необходимо зарегистрироваться..."
         },
         "request_user": {
-            "en": "User requested access to @{bot_name} with the following data:\n{data}",
-            "ru": "Пользователь запросил доступ к @{bot_name} со следующими данными:\n{data}"
+            "en": "User requested access to the bot with the following data:\n{data}",
+            "ru": "Пользователь запросил доступ к боту со следующими данными:\n{data}"
         },
         "already_requested": {
             "en": "You have already requested access to @{bot_name}!",
             "ru": "Вы уже запросили доступ к @{bot_name}!"
         },
         "user_accepted": {
-            "en": "Your request to access @{bot_name} was accepted!",
-            "ru": "Ваш запрос на доступ к @{bot_name} был принят!"
+            "en": "Your request to access the bot was accepted!",
+            "ru": "Ваш запрос на доступ к боту был принят!"
         },
         "user_denied": {
-            "en": "Your request to access @{bot_name} was denied!",
-            "ru": "Ваш запрос на доступ к @{bot_name} был отклонен!"
+            "en": "Your request to access the bot was denied!",
+            "ru": "Ваш запрос на доступ к боту был отклонен!"
+        },
+        "edit_true": {
+            "en": "You entered edit mode!",
+            "ru": "Вы вошли в режим редактирования!"
+        },
+        "edit_false": {
+            "en": "You exited edit mode!",
+            "ru": "Вы вышли из режима редактирования!"
         },
         "faq": {
             "en": "FAQ for @{bot_username}:",
             "ru": "ЧаВо для @{bot_username}:"
-        },
-        "no_faq": {
-            "en": "FAQ for @{bot_username} is empty!",
-            "ru": "ЧаВо для @{bot_username} пусто!"
         },
         "send_caption": {
             "en": "Send caption for @{bot_username}:",

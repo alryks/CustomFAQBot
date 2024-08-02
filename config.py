@@ -2,13 +2,10 @@ from dotenv import dotenv_values
 
 import pymongo
 
-from CustomBot.bot import Bot
-
 config = dotenv_values(".env")
 
 # Telegram Bot
 BOT_TOKEN = config["BOT_TOKEN"]
-BOT = Bot(BOT_TOKEN)
 
 PARSE_MODE = config["PARSE_MODE"]
 

@@ -29,8 +29,7 @@ class BotsDb:
 
     @classmethod
     async def get_user_bot_usernames(cls, user_id: int) -> [(ObjectId, str)]:
-        # get bot ids, where users.tg_id == user_id and users.is_admin == True
-        bot_ids = cls.bots.distinct("_id", {"users.tg_id": user_id, "users.is_admin": True})
+        bot_ids = cls.bots.distinct("_id", {"users": {"$elemMatch": {"tg_id": user_id, "is_admin": True}}})
         usernames = []
         for bot_id in bot_ids:
             if bot_id not in bots:
@@ -56,6 +55,7 @@ class BotsDb:
                                         "faq": [],
                                         }).inserted_id
             cls.add_user_with_id(bot_obj_id, admin, is_admin=True)
+            return bot_obj_id
 
         except DuplicateKeyError:
             return None
@@ -75,8 +75,8 @@ class BotsDb:
 
     @classmethod
     def is_admin(cls, bot_id: ObjectId, user_id: int) -> bool:
-        users = cls.bots.find_one({"_id": bot_id, "users.tg_id": user_id, "users.is_admin": True}, {"users.$": 1})
-        if users is not None and users.get("users"):
+        bot = cls.bots.find_one({"_id": bot_id, "users": {"$elemMatch": {"tg_id": user_id, "is_admin": True}}}, {"users.$": 1})
+        if bot is not None and bot.get("users"):
             return True
         return False
 
@@ -90,33 +90,24 @@ class BotsDb:
 
     @classmethod
     def is_user(cls, bot_id: ObjectId, user_id: int) -> bool:
-        # get all users from bot_id, where is_temp is unset
         bot = cls.bots.find_one({"_id": bot_id})
-        users_bot = cls.bots.find_one({"_id": bot_id, "users.is_temp": {"$exists": False}})
-        if users_bot is None:
-            return False
-        users = users_bot.get("users", [])
-        user_ids = [user.get("tg_id", 0) for user in users]
-        print(user_ids)
-        admin_ids = cls.get_admin_ids(bot_id)
-        print(admin_ids)
+        users_bot = cls.bots.find_one({"_id": bot_id, "users": {"$elemMatch": {"tg_id": user_id, "is_temp": {"$exists": False}}}}, {"users.$": 1})
         if bot and (not bot.get("is_private", False) or
-                    user_id in user_ids or
-                    user_id in admin_ids):
+                    users_bot and users_bot.get("users")):
             return True
         return False
 
     @classmethod
     def is_temp_user_id(cls, bot_id: ObjectId, user_id: int) -> bool:
-        bot = cls.bots.find_one({"_id": bot_id, "users.tg_id": user_id, "users.is_temp": True})
-        if bot is not None:
+        bot = cls.bots.find_one({"_id": bot_id, "users": {"$elemMatch": {"tg_id": user_id, "is_temp": True}}}, {"users.$": 1})
+        if bot and bot.get("users"):
             return True
         return False
 
     @classmethod
     def is_temp_user(cls, bot_id: ObjectId, user_id: ObjectId) -> bool:
-        bot = cls.bots.find_one({"_id": bot_id, "users._id": user_id, "users.is_temp": True})
-        if bot is not None:
+        bot = cls.bots.find_one({"_id": bot_id, "users": {"$elemMatch": {"_id": user_id, "is_temp": True}}}, {"users.$": 1})
+        if bot and bot.get("users"):
             return True
         return False
 
@@ -170,7 +161,7 @@ class BotsDb:
 
     @classmethod
     def delete_temp_user(cls, bot_id: ObjectId, user_id: ObjectId) -> None:
-        bot_obj = cls.bots.find_one({"_id": bot_id, "users._id": user_id, "users.is_temp": True}, {"users.$": 1})
+        bot_obj = cls.bots.find_one({"_id": bot_id, "users": {"$elemMatch": {"_id": user_id, "is_temp": True}}}, {"users.$": 1})
         if bot_obj is None:
             return
         users = bot_obj.get("users", [])

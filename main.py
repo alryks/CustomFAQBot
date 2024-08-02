@@ -9,14 +9,12 @@ from db import BotsDb
 from CustomBot.custom_bot import CustomBot
 from state import bots
 
-from config import BOT
-from handlers import start, accept, deny, \
+from config import BOT_TOKEN
+from CustomBot.bot import Bot
+
+from handlers import start, \
     bot, bot_page, bot_token, message_handler, cancel, \
-    bot_private, bot_users, bot_delete, bot_back, \
-    users_page, users_add, users_back, user, \
-    edit_user_name, edit_job_title, edit_unit, edit_place, edit_phone, edit_email, user_back, \
-    user_delete, user_admin, \
-    user_unmerge, user_merge, user_merge_page, user_merge_back, users_merge, \
+    bot_private, bot_delete, bot_back, \
     bot_required, required_field, required_back
 
 
@@ -27,12 +25,11 @@ async def main():
             continue
         bots[bot_obj["_id"]] = user_bot
 
+    BOT = Bot(BOT_TOKEN)
+
     BOT.handlers = [
         CommandHandler(["start", "help"], start),
         CallbackQueryHandler(callback, "^callback"),
-
-        CallbackQueryHandler(accept, "^accept"),
-        CallbackQueryHandler(deny, "^deny"),
 
         CallbackQueryHandler(bot, "^bots_bot"),
         CallbackQueryHandler(bot_page, "^bots_page"),
@@ -41,35 +38,12 @@ async def main():
 
         CallbackQueryHandler(bot_token, "^bot_edit"),
         CallbackQueryHandler(bot_private, "^bot_private"),
-        CallbackQueryHandler(bot_users, "^bot_users"),
         CallbackQueryHandler(bot_delete, "^bot_delete"),
         CallbackQueryHandler(bot_back, "bot_back"),
-
-        CallbackQueryHandler(users_page, "^users_page"),
-        CallbackQueryHandler(users_add, "^users_add"),
-        CallbackQueryHandler(users_back, "^users_back"),
-
-        CallbackQueryHandler(edit_user_name, "^user_name"),
-        CallbackQueryHandler(edit_job_title, "^user_job_title"),
-        CallbackQueryHandler(edit_unit, "^user_unit"),
-        CallbackQueryHandler(edit_place, "^user_place"),
-        CallbackQueryHandler(edit_phone, "^user_phone"),
-        CallbackQueryHandler(edit_email, "^user_email"),
-        CallbackQueryHandler(user_admin, "^user_admin"),
-        CallbackQueryHandler(user_delete, "^user_delete"),
-        CallbackQueryHandler(user_back, "^user_back"),
-
-        CallbackQueryHandler(user_unmerge, "^user_unmerge"),
-        CallbackQueryHandler(user_merge_page, "^user_merge_page"),
-        CallbackQueryHandler(user_merge_back, "^merge_back"),
-        CallbackQueryHandler(user_merge, "^user_merge"),
-        CallbackQueryHandler(users_merge, "^users_merge"),
 
         CallbackQueryHandler(bot_required, "^bot_required"),
         CallbackQueryHandler(required_back, "^required_back"),
         CallbackQueryHandler(required_field, "^required_"),
-
-        CallbackQueryHandler(user, "^user"),
 
         MessageHandler(filters.ALL, message_handler)
     ]

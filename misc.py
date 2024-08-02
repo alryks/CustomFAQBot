@@ -34,7 +34,7 @@ async def callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 def create_faq(faq: list, bot_username: str, caption: str, update: Update, page: int = 1) -> str:
     n = len(faq)
     if n == 0:
-        text = Languages.msg("no_faq", update).format(bot_username=bot_username)
+        text = Languages.msg("empty", update)
     else:
         max_rows = min(n, COLS_PER_PAGE)
         max_pages = (n + max_rows - 1) // max_rows
@@ -42,17 +42,20 @@ def create_faq(faq: list, bot_username: str, caption: str, update: Update, page:
         page = max(page, 1)
         page = min(page, max_pages)
 
+        text = "<b>"
         if caption.strip():
-            text = caption + ":"
+            text += caption + ":"
         else:
-            text = Languages.msg("faq", update).format(bot_username=bot_username)
+            text += Languages.msg("faq", update).format(bot_username=bot_username)
+        text += "</b>"
+
         for i in range((page - 1) * max_rows, min(page * max_rows, n)):
             text += f"\n\n<b>{i + 1}.</b> {faq[i]['question']}"
 
     return text
 
 
-def create_contacts(users: list, update: Update, page: int = 1) -> str:
+async def create_contacts(users: list, bot: Bot, update: Update, page: int = 1) -> str:
     n = len(users)
     if n == 0:
         text = Languages.msg("empty", update)
@@ -66,9 +69,14 @@ def create_contacts(users: list, update: Update, page: int = 1) -> str:
         text = ""
 
         for i in range((page - 1) * max_rows, min(page * max_rows, n)):
-            text += f"\n\n<b>{i + 1}.</b> {users[i]['name']}"
-            if users[i].get("job_title", "") != "":
-                text += f" – <i>{users[i]['job_title']}</i>"
+            if users[i].get("name", "") == "":
+                chat = await bot.get_chat(users[i]["tg_id"])
+                username = chat.full_name + (f" @{chat.username}" if chat.username else "")
+                text += f"\n\n<b>{i + 1}.</b> {username}"
+            else:
+                text += f"\n\n<b>{i + 1}.</b> {users[i]['name']}"
+                if users[i].get("job_title", "") != "":
+                    text += f" – <i>{users[i]['job_title']}</i>"
 
     return text
 
@@ -142,8 +150,7 @@ async def user_info(user_obj: dict, update: Update, bot: Bot) -> str:
             email=user_obj["email"]) + "\n"
     if user_obj.get("tg_id", 0) != 0:
         chat = await bot.get_chat(user_obj["tg_id"])
-        username = chat.full_name + (
-            f" @{chat.username}" if chat.username else "")
+        username = chat.full_name + (f" @{chat.username}" if chat.username else "")
         contacts += Languages.msg("telegram", update).format(telegram=username) + "\n"
 
     if general_info == "":
@@ -156,9 +163,24 @@ async def user_info(user_obj: dict, update: Update, bot: Bot) -> str:
     return text
 
 
+def get_first_required_field(bot_obj: dict) -> str:
+    for field, value in bot_obj["required_fields"].items():
+        if value:
+            return field
+    return ""
+
+
 def filter_faq(faq: list, search: str) -> list:
     return [question for question in faq if search.lower() in question["question"].lower()]
 
 
-def filter_contacts(users: list, search: str) -> list:
-    return [user for user in users if user.get("name", "") != "" and (search.lower() in user.get("name", "").lower() or search.lower() in user.get("job_title", "").lower() or search.lower() in user.get("unit", "").lower() or search.lower() in user.get("place", "").lower() or search.lower() in user.get("phone", "").lower() or search.lower() in user.get("email", "").lower())]
+def filter_contacts(users: list) -> list:
+    return [user for user in users if user.get("name", "") != ""]
+
+
+def search_contacts(users: list, search: str) -> list:
+    return [user for user in users if search.lower() in user.get("name", "").lower() or search.lower() in user.get("job_title", "").lower() or search.lower() in user.get("unit", "").lower() or search.lower() in user.get("place", "").lower() or search.lower() in user.get("phone", "").lower() or search.lower() in user.get("email", "").lower()]
+
+
+def sort_contacts(users: list) -> list:
+    return sorted(users, key=lambda user: user.get("name", "").lower())
