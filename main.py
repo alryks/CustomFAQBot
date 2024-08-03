@@ -48,7 +48,7 @@ async def main():
         MessageHandler(filters.ALL, message_handler)
     ]
 
-    await BOT.run()
+    await BOT.run(start_command=True)
 
     await asyncio.Event().wait()
 

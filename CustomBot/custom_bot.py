@@ -67,3 +67,9 @@ class CustomBot(Bot):
             CallbackQueryHandler(callback, "^callback"),
             MessageHandler(filters.ALL, message_handler),
         ]
+
+        self.commands = [
+            "help",
+            "faq",
+            "contacts",
+        ]

@@ -1,11 +1,32 @@
 from telegram import Update
 
+from typing import Union
+
 
 class Languages:
     langs = [
         "en",
         "ru"
     ]
+
+    _cmd = {
+        "start": {
+            "en": "Launch bot",
+            "ru": "Запуск бота"
+        },
+        "help": {
+            "en": "Bot help",
+            "ru": "Информация о работе с ботом"
+        },
+        "faq": {
+            "en": "Frequently Asked Questions",
+            "ru": "Часто задаваемые вопросы"
+        },
+        "contacts": {
+            "en": "Employee contacts",
+            "ru": "Контакты сотрудников"
+        }
+    }
 
     _msg = {
         "dont_understand": {
@@ -389,8 +410,8 @@ class Languages:
     }
 
     @classmethod
-    def get(cls, field: str, key: str, update: Update) -> str:
-        lang = update.effective_user.language_code
+    def get(cls, field: str, key: str, update: Union[Update, str]) -> str:
+        lang = update.effective_user.language_code if isinstance(update, Update) else update
         text_langs: dict = cls.__dict__[field].get(key)
         if text_langs is None:
             return ""
@@ -399,6 +420,10 @@ class Languages:
             return text_langs.get(lang)
 
         return sorted(text_langs.items(), key=lambda x: cls.langs.index(x[0]))[0][1]
+
+    @classmethod
+    def cmd(cls, key: str, lang: str) -> str:
+        return cls.get("_cmd", key, lang)
 
     @classmethod
     def msg(cls, key: str, update: Update) -> str:
