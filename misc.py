@@ -13,14 +13,14 @@ from verify_email import verify_email_async
 import phonenumbers
 
 
-def check_phone(phone: str) -> bool:
+def parse_phone(phone: str) -> Optional[str]:
     try:
-        number: Optional[phonenumbers.PhoneNumber] = phonenumbers.parse(phone)
+        number: Optional[phonenumbers.PhoneNumber] = phonenumbers.parse(phone, phonenumbers.phonenumberutil.region_code_for_country_code(7))
     except phonenumbers.phonenumberutil.NumberParseException:
-        return False
+        return None
     if not phonenumbers.is_valid_number(number):
-        return False
-    return True
+        return None
+    return phonenumbers.format_number(number, phonenumbers.PhoneNumberFormat.E164)
 
 
 async def check_email(email: str) -> bool:

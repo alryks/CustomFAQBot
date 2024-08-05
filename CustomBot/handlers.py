@@ -16,7 +16,7 @@ from .state import State
 
 from misc import create_faq, filter_faq, \
     create_contacts, search_contacts, filter_contacts, sort_contacts, \
-    get_first_required_field, user_info, check_phone, check_email
+    get_first_required_field, user_info, parse_phone, check_email
 
 from lang import Languages
 
@@ -922,20 +922,23 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             elif context.user_data["state"] == State.EDIT_PHONE.name:
                 if not fields.get("phone", False) and update.message.text.strip() == Languages.btn("reset", update):
                     BotsDb.reset_field(bot_obj["_id"], user_id, "phone")
-                elif not check_phone(update.message.text):
-                    await context.bot.send_message(
-                        chat_id=update.effective_chat.id,
-                        text=Languages.msg("invalid_phone", update),
-                        parse_mode=PARSE_MODE,
-                    )
-                    await context.bot.send_message(
-                        chat_id=update.effective_chat.id,
-                        text=Languages.msg("send_phone", update),
-                        reply_markup=keyboards.reset(update) if fields.get("phone", False) else cancel(update),
-                    )
-                    return
                 else:
-                    BotsDb.edit_user(bot_obj["_id"], user_id, phone=update.message.text)
+                    phone = parse_phone(update.message.text)
+                    if not phone:
+                        await context.bot.send_message(
+                            chat_id=update.effective_chat.id,
+                            text=Languages.msg("invalid_phone", update),
+                            parse_mode=PARSE_MODE,
+                        )
+                        await context.bot.send_message(
+                            chat_id=update.effective_chat.id,
+                            text=Languages.msg("send_phone", update),
+                            reply_markup=keyboards.reset(update) if fields.get("phone", False) else cancel(update),
+                        )
+                        return
+                    else:
+                        # set user phone in international format
+                        BotsDb.edit_user(bot_obj["_id"], user_id, phone=phone)
             elif context.user_data["state"] == State.EDIT_EMAIL.name:
                 if not fields.get("email", False) and update.message.text.strip() == Languages.btn("reset", update):
                     BotsDb.reset_field(bot_obj["_id"], user_id, "email")
@@ -972,7 +975,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
         field = State[context.user_data["state"]].name.lower()
         if (update.message.text is None or update.message.text.strip() == "" or
-                context.user_data.get("state", None) == State.PHONE.name and not check_phone(update.message.text) or
+                context.user_data.get("state", None) == State.PHONE.name and not parse_phone(update.message.text) or
                 context.user_data.get("state", None) == State.EMAIL.name and not await check_email(update.message.text)):
             await context.bot.send_message(
                 chat_id=update.effective_chat.id,
