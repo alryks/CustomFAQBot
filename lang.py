@@ -77,9 +77,17 @@ class Languages:
             "en": "<i>Place of work:</i> {place}",
             "ru": "<i>Место работы:</i> {place}"
         },
-        "phone": {
-            "en": "<i>Phone:</i> {phone}",
-            "ru": "<i>Телефон:</i> {phone}"
+        "personal_phone": {
+            "en": "<i>Personal Phone:</i> {phone}",
+            "ru": "<i>Личный телефон:</i> {phone}"
+        },
+        "work_phone": {
+            "en": "<i>Work Phone:</i> {phone}",
+            "ru": "<i>Рабочий телефон:</i> {phone}"
+        },
+        "additional_number": {
+            "en": "<i>Additional Number:</i> {number}",
+            "ru": "<i>Добавочный номер:</i> {number}"
         },
         "email": {
             "en": "<i>Email:</i> {email}",
@@ -121,13 +129,29 @@ class Languages:
             "en": "Invalid place of work!",
             "ru": "Некорректное место работы!"
         },
-        "send_phone": {
-            "en": "Send phone:",
-            "ru": "Отправьте телефон:"
+        "send_personal_phone": {
+            "en": "Send personal phone:",
+            "ru": "Отправьте личный телефон:"
         },
-        "invalid_phone": {
-            "en": "Invalid phone!",
-            "ru": "Некорректный телефон!"
+        "invalid_personal_phone": {
+            "en": "Invalid personal phone!",
+            "ru": "Некорректный личный телефон!"
+        },
+        "send_work_phone": {
+            "en": "Send work phone:",
+            "ru": "Отправьте рабочий телефон:"
+        },
+        "invalid_work_phone": {
+            "en": "Invalid work phone!",
+            "ru": "Некорректный рабочий телефон!"
+        },
+        "send_additional_number": {
+            "en": "Send additional number:",
+            "ru": "Отправьте добавочный номер:"
+        },
+        "invalid_additional_number": {
+            "en": "Invalid additional number!",
+            "ru": "Некорректный добавочный номер!"
         },
         "send_email": {
             "en": "Send email:",
@@ -283,9 +307,17 @@ class Languages:
             "en": "📍Edit Place",
             "ru": "📍Изменить место работы"
         },
-        "edit_phone": {
-            "en": "📞Edit Phone",
-            "ru": "📞Изменить телефон"
+        "edit_personal_phone": {
+            "en": "📱Edit Personal Phone",
+            "ru": "📱Изменить личный телефон"
+        },
+        "edit_work_phone": {
+            "en": "📞Edit Work Phone",
+            "ru": "📞Изменить рабочий телефон"
+        },
+        "edit_additional_number": {
+            "en": "☎️Edit Additional Number",
+            "ru": "☎️Изменить добавочный номер"
         },
         "edit_email": {
             "en": "📧Edit Email",

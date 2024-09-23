@@ -79,7 +79,11 @@ def user(user_obj: dict, admin: bool, update: Update) -> InlineKeyboardMarkup:
             InlineKeyboardButton(Languages.kbd("edit_place", update), callback_data=f"user_place {user_id}")
         ],
         [
-            InlineKeyboardButton(Languages.kbd("edit_phone", update), callback_data=f"user_phone {user_id}"),
+            InlineKeyboardButton(Languages.kbd("edit_personal_phone", update), callback_data=f"user_personal_phone {user_id}"),
+            InlineKeyboardButton(Languages.kbd("edit_work_phone", update), callback_data=f"user_work_phone {user_id}")
+        ],
+        [
+            InlineKeyboardButton(Languages.kbd("edit_additional_number", update), callback_data=f"user_additional_number {user_id}"),
             InlineKeyboardButton(Languages.kbd("edit_email", update), callback_data=f"user_email {user_id}")
         ]
     ]

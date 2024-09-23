@@ -20,7 +20,8 @@ from handlers import start, edit, cancel_command, message_handler, \
     \
     similar_page, similar_user, \
     \
-    edit_contact_name, edit_job_title, edit_unit, edit_place, edit_phone, edit_email, \
+    edit_contact_name, edit_job_title, edit_unit, edit_place, \
+    edit_personal_phone, edit_work_phone, edit_additional_number, edit_email, \
     user_admin, user_delete, user_confirm_delete, user_cancel
 
 
@@ -56,7 +57,9 @@ async def main():
         CallbackQueryHandler(edit_job_title, "^user_job_title"),
         CallbackQueryHandler(edit_unit, "^user_unit"),
         CallbackQueryHandler(edit_place, "^user_place"),
-        CallbackQueryHandler(edit_phone, "^user_phone"),
+        CallbackQueryHandler(edit_personal_phone, "^user_personal_phone"),
+        CallbackQueryHandler(edit_work_phone, "^user_work_phone"),
+        CallbackQueryHandler(edit_additional_number, "^user_additional_number"),
         CallbackQueryHandler(edit_email, "^user_email"),
         CallbackQueryHandler(user_admin, "^user_admin"),
         CallbackQueryHandler(user_delete, "^user_delete"),

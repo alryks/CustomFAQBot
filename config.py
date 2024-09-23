@@ -15,11 +15,13 @@ COLS_PER_PAGE = 5
 # Fields
 FIELDS = {
     "name": "",
-    "supervisor": "",
+    "supervisor": None,
     "job_title": "",
     "unit": "",
     "place": "",
-    "phone": "",
+    "personal_phone": "",
+    "work_phone": "",
+    "additional_number": 0,
     "email": "",
     "tg_id": 0,
     "is_admin": False,

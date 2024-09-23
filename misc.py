@@ -140,9 +140,15 @@ async def user_info(user_obj: dict, update: Update, bot: Bot) -> str:
             place=user_obj["place"]) + "\n"
 
     contacts = ""
-    if user_obj.get("phone", "") != "":
-        contacts += Languages.msg("phone", update).format(
-            phone=user_obj["phone"]) + "\n"
+    if user_obj.get("personal_phone", "") != "":
+        contacts += Languages.msg("personal_phone", update).format(
+            phone=user_obj["personal_phone"]) + "\n"
+    if user_obj.get("work_phone", "") != "":
+        contacts += Languages.msg("work_phone", update).format(
+            phone=user_obj["work_phone"]) + "\n"
+    if user_obj.get("additional_number", 0) != 0:
+        contacts += Languages.msg("additional_number", update).format(
+            number=user_obj["additional_number"]) + "\n"
     if user_obj.get("email", "") != "":
         contacts += Languages.msg("email", update).format(
             email=user_obj["email"]) + "\n"
@@ -166,12 +172,20 @@ def filter_faq(faq: list, search: str) -> list:
 
 
 def filter_contacts(users: list, required_fields: list) -> list:
-    # don't show users if not all of their required fields are filled
     return [user for user in users if all(user.get(field, "") != "" for field in required_fields)]
 
 
 def search_contacts(users: list, search: str) -> list:
-    return [user for user in users if search.lower() in user.get("name", "").lower() or search.lower() in user.get("job_title", "").lower() or search.lower() in user.get("unit", "").lower() or search.lower() in user.get("place", "").lower() or search.lower() in user.get("phone", "").lower() or search.lower() in user.get("email", "").lower()]
+    return [user for user in users if
+            search.lower() in user.get("name", "").lower() or
+            search.lower() in user.get("job_title", "").lower() or
+            search.lower() in user.get("unit", "").lower() or
+            search.lower() in user.get("place", "").lower() or
+            search.lower() in user.get("personal_phone", "").lower() or
+            search.lower() in user.get("work_phone", "").lower() or
+            search.lower() in str(user.get("additional_number", "")).lower() or
+            search.lower() in user.get("email", "").lower()
+            ]
 
 
 def sort_contacts(users: list, field: str) -> list:

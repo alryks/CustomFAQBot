@@ -652,18 +652,18 @@ async def edit_place(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     context.user_data["delete_message_ids"].append(message.message_id)
 
 
-async def edit_phone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def edit_personal_phone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     effective_user = UsersDb.get_user_by_tg(update.effective_user.id)
     if not effective_user or not effective_user["is_admin"]:
         context.user_data["edit"] = False
         await contact(update, context)
         return
 
-    context.user_data["state"] = State.EDIT_PHONE.name
+    context.user_data["state"] = State.EDIT_PERSONAL_PHONE.name
     context.user_data["user_id"] = ObjectId(
         update.callback_query.data.split(" ")[1])
 
-    is_required = "phone" in REQUIRED_FIELDS
+    is_required = "personal_phone" in REQUIRED_FIELDS
 
     await context.bot.delete_message(
         chat_id=update.effective_chat.id,
@@ -671,7 +671,63 @@ async def edit_phone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     )
     message = await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text=Languages.msg("send_phone", update),
+        text=Languages.msg("send_personal_phone", update),
+        reply_markup=keyboards.cancel(update) if is_required else keyboards.reset(update),
+        parse_mode=PARSE_MODE,
+    )
+    if not context.user_data.get("delete_message_ids"):
+        context.user_data["delete_message_ids"] = []
+    context.user_data["delete_message_ids"].append(message.message_id)
+
+
+async def edit_work_phone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    effective_user = UsersDb.get_user_by_tg(update.effective_user.id)
+    if not effective_user or not effective_user["is_admin"]:
+        context.user_data["edit"] = False
+        await contact(update, context)
+        return
+
+    context.user_data["state"] = State.EDIT_WORK_PHONE.name
+    context.user_data["user_id"] = ObjectId(
+        update.callback_query.data.split(" ")[1])
+
+    is_required = "work_phone" in REQUIRED_FIELDS
+
+    await context.bot.delete_message(
+        chat_id=update.effective_chat.id,
+        message_id=update.effective_message.message_id
+    )
+    message = await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=Languages.msg("send_work_phone", update),
+        reply_markup=keyboards.cancel(update) if is_required else keyboards.reset(update),
+        parse_mode=PARSE_MODE,
+    )
+    if not context.user_data.get("delete_message_ids"):
+        context.user_data["delete_message_ids"] = []
+    context.user_data["delete_message_ids"].append(message.message_id)
+
+
+async def edit_additional_number(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    effective_user = UsersDb.get_user_by_tg(update.effective_user.id)
+    if not effective_user or not effective_user["is_admin"]:
+        context.user_data["edit"] = False
+        await contact(update, context)
+        return
+
+    context.user_data["state"] = State.EDIT_ADDITIONAL_NUMBER.name
+    context.user_data["user_id"] = ObjectId(
+        update.callback_query.data.split(" ")[1])
+
+    is_required = "additional_number" in REQUIRED_FIELDS
+
+    await context.bot.delete_message(
+        chat_id=update.effective_chat.id,
+        message_id=update.effective_message.message_id
+    )
+    message = await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=Languages.msg("send_additional_number", update),
         reply_markup=keyboards.cancel(update) if is_required else keyboards.reset(update),
         parse_mode=PARSE_MODE,
     )
@@ -789,7 +845,8 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             await faq_ans(update, context, question_id=question_id)
         return
 
-    if (context.user_data.get("state") in [State.NAME.name, State.JOB_TITLE.name, State.UNIT.name, State.PLACE.name, State.PHONE.name, State.EMAIL.name] and
+    if (context.user_data.get("state") in [State.NAME.name, State.JOB_TITLE.name, State.UNIT.name, State.PLACE.name,
+                                           State.PERSONAL_PHONE.name, State.WORK_PHONE.name, State.ADDITIONAL_NUMBER.name, State.EMAIL.name] and
             update.message.text == Languages.btn("cancel", update)):
         context.user_data["user"] = None
         context.user_data["search"] = None
@@ -801,7 +858,8 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             await contacts(update, context)
         return
 
-    if (context.user_data.get("state") in [State.EDIT_NAME.name, State.EDIT_JOB.name, State.EDIT_UNIT.name, State.EDIT_PLACE.name, State.EDIT_PHONE.name, State.EDIT_EMAIL.name] and
+    if (context.user_data.get("state") in [State.EDIT_NAME.name, State.EDIT_JOB.name, State.EDIT_UNIT.name, State.EDIT_PLACE.name,
+                                           State.EDIT_PERSONAL_PHONE.name, State.EDIT_WORK_PHONE.name, State.EDIT_ADDITIONAL_NUMBER.name, State.EDIT_EMAIL.name] and
             update.message.text == Languages.btn("cancel", update)):
         context.user_data["search"] = None
         context.user_data["state"] = State.CONTACTS.name
@@ -913,7 +971,8 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             context.user_data["delete_message_ids"].append(message.message_id)
 
             return
-        elif context.user_data["state"] in [State.EDIT_NAME.name, State.EDIT_JOB.name, State.EDIT_UNIT.name, State.EDIT_PLACE.name, State.EDIT_PHONE.name, State.EDIT_EMAIL.name]:
+        elif context.user_data["state"] in [State.EDIT_NAME.name, State.EDIT_JOB.name, State.EDIT_UNIT.name, State.EDIT_PLACE.name,
+                                            State.EDIT_PERSONAL_PHONE.name, State.EDIT_WORK_PHONE.name, State.EDIT_ADDITIONAL_NUMBER.name, State.EDIT_EMAIL.name]:
             if not context.user_data.get("delete_message_ids"):
                 context.user_data["delete_message_ids"] = []
             context.user_data["delete_message_ids"].append(update.effective_message.message_id)
@@ -942,20 +1001,44 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                     UsersDb.edit_user(user_id, {"place": FIELDS["place"]})
                 else:
                     UsersDb.edit_user(user_id, {"place": update.message.text})
-            elif context.user_data["state"] == State.EDIT_PHONE.name:
-                if "phone" not in REQUIRED_FIELDS and update.message.text.strip() == Languages.btn("reset", update):
-                    UsersDb.edit_user(user_id, {"phone": FIELDS["phone"]})
+            elif context.user_data["state"] == State.EDIT_ADDITIONAL_NUMBER.name:
+                if "additional_number" not in REQUIRED_FIELDS and update.message.text.strip() == Languages.btn("reset", update):
+                    UsersDb.edit_user(user_id, {"additional_number": FIELDS["additional_number"]})
+                else:
+                    if all([c.isdigit() for c in update.message.text]):
+                        UsersDb.edit_user(user_id, {"additional_number": int(update.message.text)})
+                    else:
+                        message1 = await context.bot.send_message(
+                            chat_id=update.effective_chat.id,
+                            text=Languages.msg("invalid_additional_number", update),
+                            parse_mode=PARSE_MODE,
+                        )
+                        message2 = await context.bot.send_message(
+                            chat_id=update.effective_chat.id,
+                            text=Languages.msg("send_additional_number", update),
+                            reply_markup=keyboards.reset(update) if "additional_number" not in REQUIRED_FIELDS else keyboards.cancel(update),
+                        )
+                        if not context.user_data.get("delete_message_ids"):
+                            context.user_data["delete_message_ids"] = []
+                        context.user_data["delete_message_ids"].extend([
+                            message1.message_id,
+                            message2.message_id,
+                        ])
+                        return
+            elif context.user_data["state"] == State.EDIT_PERSONAL_PHONE.name:
+                if "personal_phone" not in REQUIRED_FIELDS and update.message.text.strip() == Languages.btn("reset", update):
+                    UsersDb.edit_user(user_id, {"personal_phone": FIELDS["personal_phone"]})
                 else:
                     phone = parse_phone(update.message.text)
                     if not phone:
                         message1 = await context.bot.send_message(
                             chat_id=update.effective_chat.id,
-                            text=Languages.msg("invalid_phone", update),
+                            text=Languages.msg("invalid_personal_phone", update),
                             parse_mode=PARSE_MODE,
                         )
                         message2 = await context.bot.send_message(
                             chat_id=update.effective_chat.id,
-                            text=Languages.msg("send_phone", update),
+                            text=Languages.msg("send_personal_phone", update),
                             reply_markup=keyboards.reset(update) if "phone" not in REQUIRED_FIELDS else keyboards.cancel(update),
                         )
                         if not context.user_data.get("delete_message_ids"):
@@ -966,7 +1049,32 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                         ])
                         return
                     else:
-                        UsersDb.edit_user(user_id, {"phone": phone})
+                        UsersDb.edit_user(user_id, {"personal_phone": phone})
+            elif context.user_data["state"] == State.EDIT_WORK_PHONE.name:
+                if "work_phone" not in REQUIRED_FIELDS and update.message.text.strip() == Languages.btn("reset", update):
+                    UsersDb.edit_user(user_id, {"work_phone": FIELDS["work_phone"]})
+                else:
+                    phone = parse_phone(update.message.text)
+                    if not phone:
+                        message1 = await context.bot.send_message(
+                            chat_id=update.effective_chat.id,
+                            text=Languages.msg("invalid_work_phone", update),
+                            parse_mode=PARSE_MODE,
+                        )
+                        message2 = await context.bot.send_message(
+                            chat_id=update.effective_chat.id,
+                            text=Languages.msg("send_work_phone", update),
+                            reply_markup=keyboards.reset(update) if "phone" not in REQUIRED_FIELDS else keyboards.cancel(update),
+                        )
+                        if not context.user_data.get("delete_message_ids"):
+                            context.user_data["delete_message_ids"] = []
+                        context.user_data["delete_message_ids"].extend([
+                            message1.message_id,
+                            message2.message_id,
+                        ])
+                        return
+                    else:
+                        UsersDb.edit_user(user_id, {"work_phone": phone})
             elif context.user_data["state"] == State.EDIT_EMAIL.name:
                 if "email" not in REQUIRED_FIELDS and update.message.text.strip() == Languages.btn("reset", update):
                     UsersDb.edit_user(user_id, {"email": FIELDS["email"]})
@@ -994,7 +1102,8 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             await contact(update, context, user_id=user_id)
             return
 
-    if context.user_data.get("state", None) in [State.NAME.name, State.JOB_TITLE.name, State.UNIT.name, State.PLACE.name, State.PHONE.name, State.EMAIL.name]:
+    if context.user_data.get("state", None) in [State.NAME.name, State.JOB_TITLE.name, State.UNIT.name, State.PLACE.name,
+                                                State.PERSONAL_PHONE.name, State.WORK_PHONE.name, State.ADDITIONAL_NUMBER.name, State.EMAIL.name]:
         if update.message.text == Languages.btn("cancel", update):
             context.user_data["user"] = None
             if effective_user and effective_user["is_admin"]:
@@ -1010,7 +1119,8 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
         field = State[context.user_data["state"]].name.lower()
         if (update.message.text is None or update.message.text.strip() == "" or
-                context.user_data.get("state", None) == State.PHONE.name and not parse_phone(update.message.text) or
+                context.user_data.get("state", None) in [State.PERSONAL_PHONE.name, State.WORK_PHONE.name] and not parse_phone(update.message.text) or
+                context.user_data.get("state", None) == State.ADDITIONAL_NUMBER.name and not all([c.isdigit() for c in update.message.text]) or
                 context.user_data.get("state", None) == State.EMAIL.name and not await check_email(update.message.text)):
             await context.bot.send_message(
                 chat_id=update.effective_chat.id,
