@@ -1,330 +1,1112 @@
-from telegram import Update
-from telegram.ext import ContextTypes, Application
+from typing import Optional
+
+from telegram import Update, ReplyKeyboardRemove
+from telegram.ext import ContextTypes
 
 from bson import ObjectId
 
-from typing import Optional
-
-from config import PARSE_MODE
+from config import PARSE_MODE, PRIVATE, FIELDS, REQUIRED_FIELDS
 
 import keyboards
 
-from db import BotsDb
+from db import UsersDb, FaqDb
 
-from state import State, bots
+from state import State
 
-from CustomBot.custom_bot import CustomBot
+from misc import create_faq, filter_faq, \
+    create_contacts, search_contacts, filter_contacts, sort_contacts, \
+    user_info, parse_phone, check_email
 
 from lang import Languages
 
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE, page=1) -> None:
-    context.user_data["state"] = State.IDLE.name
+async def check_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    if not PRIVATE:
+        return True
 
-    bot_usernames = await BotsDb.get_user_bot_usernames(update.effective_user.id)
+    user_obj = UsersDb.get_user_by_tg(update.effective_user.id)
+    if user_obj and not user_obj["is_temp"]:
+        return True
+
+    if user_obj and user_obj["is_temp"]:
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=Languages.msg("already_requested", update),
+            parse_mode=PARSE_MODE,
+        )
+        return False
+
+    if not REQUIRED_FIELDS:
+        user = FIELDS.copy()
+        user.update({
+            "tg_id": update.effective_user.id,
+            "is_temp": True,
+        })
+        user_id = UsersDb.add_user(user)
+
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=Languages.msg("not_user_request", update),
+            parse_mode=PARSE_MODE,
+        )
+
+        user_obj = UsersDb.get_user(user_id)
+
+        for admin in UsersDb.get_admins():
+            try:
+                if admin["tg_id"] == 0:
+                    continue
+
+                await context.bot.send_message(
+                    chat_id=admin["tg_id"],
+                    text=Languages.msg("request_user", update).format(data=user_info(user_obj, update, context.bot)),
+                    reply_markup=keyboards.accept_deny(user_id),
+                    parse_mode=PARSE_MODE,
+                )
+            except:
+                pass
+
+        return False
+
+    first_field = REQUIRED_FIELDS[0]
+    context.user_data["state"] = State[first_field.upper()].name
+
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text=Languages.msg("your_faqs", update) if bot_usernames else Languages.msg("no_faqs", update),
-        reply_markup=keyboards.bots(bot_usernames, page, update),
+        text=Languages.msg("register", update),
+        parse_mode=PARSE_MODE,
+    )
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=Languages.msg("send_" + first_field, update),
+        reply_markup=keyboards.cancel(update),
+        parse_mode=PARSE_MODE,
+    )
+
+    return False
+
+
+async def check_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    user_obj = UsersDb.get_user_by_tg(update.effective_user.id)
+    if user_obj and user_obj["is_admin"]:
+        return True
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=Languages.msg("not_admin", update),
+        parse_mode=PARSE_MODE,
+    )
+
+    return False
+
+
+async def accept(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await context.bot.delete_message(
+        chat_id=update.effective_chat.id,
+        message_id=update.effective_message.message_id
+    )
+    if not await check_admin(update, context):
+        context.user_data["edit"] = False
+        return
+
+    user_obj = UsersDb.get_user(ObjectId(update.callback_query.data.split(" ")[1]))
+
+    if user_obj["is_temp"]:
+        UsersDb.edit_user(user_obj["_id"], {"is_temp": False})
+        await context.bot.send_message(
+            chat_id=user_obj["tg_id"],
+            text=Languages.msg("user_accepted", update),
+            parse_mode=PARSE_MODE,
+        )
+
+    context.user_data["edit"] = True
+
+    await similar(update, context, user_id=user_obj["_id"])
+
+
+async def similar(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: Optional[ObjectId] = None, delete: bool = False, page: int = 1) -> None:
+    effective_user = UsersDb.get_user_by_tg(update.effective_user.id)
+    if not effective_user or not effective_user["is_admin"]:
+        context.user_data["edit"] = False
+        await context.bot.delete_message(
+            chat_id=update.effective_chat.id,
+            message_id=update.effective_message.message_id
+        )
+        await contacts(update, context)
+        return
+
+    if delete:
+        await context.bot.delete_message(
+            chat_id=update.effective_chat.id,
+            message_id=update.effective_message.message_id
+        )
+
+    if not user_id:
+        user_id = ObjectId(update.callback_query.data.split(" ")[2])
+    similar_users = UsersDb.get_similar_users(user_id)
+    if not similar_users:
+        return await contact(update, context, user_id=user_id)
+
+    message = await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=await create_contacts(similar_users, context.bot, update, page, similar=True),
+        reply_markup=keyboards.contacts(similar_users, False, update, page, similar=True, user_id=user_id),
+        parse_mode=PARSE_MODE,
+    )
+    if not context.user_data.get("delete_message_ids"):
+        context.user_data["delete_message_ids"] = []
+    context.user_data["delete_message_ids"].append(message.message_id)
+
+
+async def similar_page(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await similar(update, context, delete=True, page=int(update.callback_query.data.split(" ")[2]), user_id=ObjectId(update.callback_query.data.split(" ")[1]))
+
+
+async def similar_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    effective_user = UsersDb.get_user_by_tg(update.effective_user.id)
+    if not effective_user or not effective_user["is_admin"]:
+        context.user_data["edit"] = False
+        await context.bot.delete_message(
+            chat_id=update.effective_chat.id,
+            message_id=update.effective_message.message_id
+        )
+        await contacts(update, context)
+        return
+
+    user_obj = UsersDb.get_user(ObjectId(update.callback_query.data.split(" ")[2]))
+    tg_id = user_obj["tg_id"]
+
+    user_id = ObjectId(update.callback_query.data.split(" ")[1])
+    UsersDb.edit_user(user_id, {"tg_id": tg_id})
+
+    UsersDb.delete_user(user_obj["_id"])
+
+    await contact(update, context, user_id=user_id)
+
+
+async def deny(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await context.bot.delete_message(
+        chat_id=update.effective_chat.id,
+        message_id=update.effective_message.message_id
+    )
+    if not await check_admin(update, context):
+        context.user_data["edit"] = False
+        return
+
+    user_obj = UsersDb.get_user(ObjectId(update.callback_query.data.split(" ")[1]))
+
+    if user_obj["is_temp"]:
+        await context.bot.send_message(
+            chat_id=user_obj["tg_id"],
+            text=Languages.msg("user_denied", update),
+            parse_mode=PARSE_MODE,
+        )
+        UsersDb.delete_user(user_obj["_id"])
+
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    context.user_data["search"] = None
+    context.user_data["state"] = State.IDLE.name
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=Languages.msg("start", update),
+        parse_mode=PARSE_MODE,
+    )
+
+    await check_user(update, context)
+
+
+async def edit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not await check_admin(update, context):
+        return
+
+    context.user_data["edit"] = not context.user_data.get("edit", False)
+
+    if context.user_data["edit"]:
+        message = Languages.msg("edit_true", update)
+    else:
+        message = Languages.msg("edit_false", update)
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=message,
         parse_mode=PARSE_MODE,
     )
 
 
-async def bot_token(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if update.callback_query is not None:
-        if update.callback_query.data == "bots_add":
-            context.user_data["state"] = State.ADD_TOKEN.name
-        else:
-            context.user_data["state"] = State.EDIT_TOKEN.name
-            context.user_data["bot_id"] = ObjectId(update.callback_query.data.split(" ")[1])
+async def cancel_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await context.bot.delete_message(
+        chat_id=update.effective_chat.id,
+        message_id=update.effective_message.message_id
+    )
+
+
+async def delete_messages(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    delete_message_ids = context.user_data.get("delete_message_ids")
+    if delete_message_ids is not None:
+        for delete_message_id in delete_message_ids:
+            try:
+                await context.bot.delete_message(
+                    chat_id=update.effective_chat.id,
+                    message_id=delete_message_id
+                )
+            except:
+                pass
+
+    context.user_data["delete_message_ids"] = []
+
+
+async def faq(update: Update, context: ContextTypes.DEFAULT_TYPE, delete=False, page=1) -> None:
+    context.user_data["state"] = State.FAQ.name
+
+    if not await check_user(update, context):
+        return
+
+    if context.user_data.get("edit", False):
+        if not UsersDb.get_user_by_tg(update.effective_user.id)["is_admin"]:
+            context.user_data["edit"] = False
+
+    search = context.user_data.get("search")
+    if search is None:
+        search = ""
+
+    filtered_faq = filter_faq(FaqDb.get_faq(), search)
+
+    text = create_faq(filtered_faq, update, page)
+
+    if delete:
+        await context.bot.delete_message(
+            chat_id=update.effective_chat.id,
+            message_id=update.effective_message.message_id
+        )
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=text,
+        reply_markup=keyboards.faq(filtered_faq, update, context.user_data.get("edit", False), page),
+        parse_mode=PARSE_MODE,
+    )
+
+
+async def faq_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    context.user_data["search"] = None
+    await faq(update, context)
+
+
+async def faq_page(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await faq(update, context, delete=True, page=int(update.callback_query.data.split(" ")[1]))
+
+
+async def faq_add(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    effective_user = UsersDb.get_user_by_tg(update.effective_user.id)
+    if not effective_user or not effective_user["is_admin"]:
+        context.user_data["edit"] = False
+        await faq(update, context, delete=True)
+        return
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=Languages.msg("send_question", update),
+        reply_markup=keyboards.cancel(update),
+        parse_mode=PARSE_MODE,
+    )
+
+    context.user_data["state"] = State.ADD_QUESTION.name
+
+    if update.callback_query:
+        await update.callback_query.answer(
+            text=Languages.msg("answer_sent", update),
+        )
+
+
+async def faq_ans(update: Update, context: ContextTypes.DEFAULT_TYPE, question_id: Optional[ObjectId] = None) -> None:
+    if not await check_user(update, context):
+        return
+
+    if not question_id:
+        question_id = ObjectId(update.callback_query.data.split(" ")[1])
+
+    question = FaqDb.get_question(question_id)
+    if not question:
+        await context.bot.delete_message(
+            chat_id=update.effective_chat.id,
+            message_id=update.callback_query.message.message_id,
+        )
+        await faq(update, context)
+        return
+    answers = question["answers"]
+
+    await delete_messages(update, context)
+
+    if context.user_data.get("edit", False):
+        message = await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=Languages.msg("current_question", update).format(question=question["question"]),
+            parse_mode=PARSE_MODE,
+        )
+        context.user_data["delete_message_ids"].append(message.message_id)
+
+        message = await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=Languages.msg("current_answers", update),
+            parse_mode=PARSE_MODE,
+        )
+        context.user_data["delete_message_ids"].append(message.message_id)
+
+    for answer in answers:
+        message = await context.bot.copy_message(
+            chat_id=update.effective_chat.id,
+            from_chat_id=answer["chat_id"],
+            message_id=answer["message_id"],
+        )
+        context.user_data["delete_message_ids"].append(message.message_id)
+
+    if context.user_data.get("edit", False):
+        message = await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=Languages.msg("question_action", update),
+            reply_markup=keyboards.faq_edit(question["_id"], update),
+            parse_mode=PARSE_MODE,
+        )
+        context.user_data["delete_message_ids"].append(message.message_id)
+
+    if update.callback_query:
+        await update.callback_query.answer(
+            text=Languages.msg("answer_sent", update),
+        )
+
+
+async def question_edit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    effective_user = UsersDb.get_user_by_tg(update.effective_user.id)
+    if not effective_user or not effective_user["is_admin"]:
+        context.user_data["edit"] = False
+
+        await delete_messages(update, context)
+
+        await faq(update, context)
+        return
+
+    context.user_data["question_id"] = ObjectId(update.callback_query.data.split(" ")[1])
+    context.user_data["state"] = State.EDIT_QUESTION.name
 
     await context.bot.delete_message(
         chat_id=update.effective_chat.id,
         message_id=update.effective_message.message_id
     )
+
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text=Languages.msg("send_token", update),
+        text=Languages.msg("send_new_question", update),
         reply_markup=keyboards.cancel(update),
         parse_mode=PARSE_MODE,
     )
 
 
+async def question_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    effective_user = UsersDb.get_user_by_tg(update.effective_user.id)
+    if not effective_user or not effective_user["is_admin"]:
+        context.user_data["edit"] = False
+
+        await delete_messages(update, context)
+
+        await faq(update, context)
+        return
+
+    question_id = ObjectId(update.callback_query.data.split(" ")[1])
+    FaqDb.delete_question(question_id)
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=Languages.msg("question_deleted", update),
+        parse_mode=PARSE_MODE,
+    )
+
+    await delete_messages(update, context)
+
+    await faq(update, context)
+
+
+async def question_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await delete_messages(update, context)
+
+    effective_user = UsersDb.get_user_by_tg(update.effective_user.id)
+    if not effective_user or not effective_user["is_admin"]:
+        context.user_data["edit"] = False
+        await faq(update, context)
+        return
+
+
+async def contacts(update: Update, context: ContextTypes.DEFAULT_TYPE, delete: bool = False, page: int = 1) -> None:
+    context.user_data["state"] = State.CONTACTS.name
+
+    if not await check_user(update, context):
+        return
+
+    if context.user_data.get("edit", False):
+        if not UsersDb.get_user_by_tg(update.effective_user.id)["is_admin"]:
+            context.user_data["edit"] = False
+
+    search = context.user_data.get("search")
+    if not search:
+        search = ""
+
+    searched_contacts = search_contacts(UsersDb.get_users(), search)
+    if not context.user_data.get("edit", False):
+        searched_contacts = filter_contacts(searched_contacts, REQUIRED_FIELDS)
+    field = "name" if not REQUIRED_FIELDS else REQUIRED_FIELDS[0]
+    searched_contacts = sort_contacts(searched_contacts, field)
+
+    text = await create_contacts(searched_contacts, context.bot, update, page)
+
+    if delete:
+        await context.bot.delete_message(
+            chat_id=update.effective_chat.id,
+            message_id=update.effective_message.message_id
+        )
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=text,
+        reply_markup=keyboards.contacts(searched_contacts, context.user_data.get("edit", False), update, page),
+        parse_mode=PARSE_MODE,
+    )
+
+
+async def contacts_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    context.user_data["search"] = None
+    await contacts(update, context)
+
+
+async def contacts_page(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await contacts(update, context, delete=True, page=int(update.callback_query.data.split(" ")[1]))
+
+
+async def contacts_add(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    effective_user = UsersDb.get_user_by_tg(update.effective_user.id)
+    if not effective_user or not effective_user["is_admin"]:
+        context.user_data["edit"] = False
+        await contacts(update, context, delete=True)
+        return
+
+    first_field = "name" if not REQUIRED_FIELDS else REQUIRED_FIELDS[0]
+
+    context.user_data["state"] = State[first_field.upper()].name
+    context.user_data["user"] = FIELDS.copy()
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=Languages.msg("send_" + first_field, update),
+        reply_markup=keyboards.cancel(update),
+        parse_mode=PARSE_MODE,
+    )
+
+    await update.callback_query.answer(
+        text=Languages.msg("answer_sent", update),
+    )
+
+
+async def contact(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: Optional[ObjectId] = None) -> None:
+    if not await check_user(update, context):
+        return
+
+    if context.user_data.get("edit", False):
+        if not UsersDb.get_user_by_tg(update.effective_user.id)["is_admin"]:
+            context.user_data["edit"] = False
+
+    if not user_id:
+        user_id = ObjectId(update.callback_query.data.split(" ")[1])
+    user_obj = UsersDb.get_user(user_id)
+    if not user_obj:
+        await context.bot.delete_message(
+            chat_id=update.effective_chat.id,
+            message_id=update.effective_message.message_id,
+        )
+        await contacts(update, context)
+        return
+
+    await delete_messages(update, context)
+
+    message = await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=await user_info(user_obj, update, context.bot),
+        reply_markup=keyboards.user(user_obj, user_obj["tg_id"] != update.effective_user.id, update) if context.user_data.get("edit", False) else None,
+        parse_mode=PARSE_MODE,
+    )
+    context.user_data["delete_message_ids"].append(message.message_id)
+
+    if update.callback_query:
+        await update.callback_query.answer(
+            text=Languages.msg("answer_sent", update),
+        )
+
+
+async def edit_contact_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    effective_user = UsersDb.get_user_by_tg(update.effective_user.id)
+    if not effective_user or not effective_user["is_admin"]:
+        context.user_data["edit"] = False
+        await contact(update, context)
+        return
+
+    context.user_data["state"] = State.EDIT_NAME.name
+    context.user_data["user_id"] = ObjectId(update.callback_query.data.split(" ")[1])
+
+    is_required = "name" in REQUIRED_FIELDS
+
+    await context.bot.delete_message(
+        chat_id=update.effective_chat.id,
+        message_id=update.effective_message.message_id
+    )
+    message = await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=Languages.msg("send_name", update),
+        reply_markup=keyboards.cancel(update) if is_required else keyboards.reset(update),
+        parse_mode=PARSE_MODE,
+    )
+    if not context.user_data.get("delete_message_ids"):
+        context.user_data["delete_message_ids"] = []
+    context.user_data["delete_message_ids"].append(message.message_id)
+
+
+async def edit_job_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    effective_user = UsersDb.get_user_by_tg(update.effective_user.id)
+    if not effective_user or not effective_user["is_admin"]:
+        context.user_data["edit"] = False
+        await contact(update, context)
+        return
+
+    context.user_data["state"] = State.EDIT_JOB.name
+    context.user_data["user_id"] = ObjectId(update.callback_query.data.split(" ")[1])
+
+    is_required = "job_title" in REQUIRED_FIELDS
+
+    await context.bot.delete_message(
+        chat_id=update.effective_chat.id,
+        message_id=update.effective_message.message_id
+    )
+    message = await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=Languages.msg("send_job_title", update),
+        reply_markup=keyboards.cancel(update) if is_required else keyboards.reset(update),
+        parse_mode=PARSE_MODE,
+    )
+    if not context.user_data.get("delete_message_ids"):
+        context.user_data["delete_message_ids"] = []
+    context.user_data["delete_message_ids"].append(message.message_id)
+
+
+async def edit_unit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    effective_user = UsersDb.get_user_by_tg(update.effective_user.id)
+    if not effective_user or not effective_user["is_admin"]:
+        context.user_data["edit"] = False
+        await contact(update, context)
+        return
+
+    context.user_data["state"] = State.EDIT_UNIT.name
+    context.user_data["user_id"] = ObjectId(
+        update.callback_query.data.split(" ")[1])
+
+    is_required = "unit" in REQUIRED_FIELDS
+
+    await context.bot.delete_message(
+        chat_id=update.effective_chat.id,
+        message_id=update.effective_message.message_id
+    )
+    message = await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=Languages.msg("send_unit", update),
+        reply_markup=keyboards.cancel(update) if is_required else keyboards.reset(update),
+        parse_mode=PARSE_MODE,
+    )
+    if not context.user_data.get("delete_message_ids"):
+        context.user_data["delete_message_ids"] = []
+    context.user_data["delete_message_ids"].append(message.message_id)
+
+
+async def edit_place(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    effective_user = UsersDb.get_user_by_tg(update.effective_user.id)
+    if not effective_user or not effective_user["is_admin"]:
+        context.user_data["edit"] = False
+        await contact(update, context)
+        return
+
+    context.user_data["state"] = State.EDIT_PLACE.name
+    context.user_data["user_id"] = ObjectId(
+        update.callback_query.data.split(" ")[1])
+
+    is_required = "place" in REQUIRED_FIELDS
+
+    await context.bot.delete_message(
+        chat_id=update.effective_chat.id,
+        message_id=update.effective_message.message_id
+    )
+    message = await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=Languages.msg("send_place", update),
+        reply_markup=keyboards.cancel(update) if is_required else keyboards.reset(update),
+        parse_mode=PARSE_MODE,
+    )
+    if not context.user_data.get("delete_message_ids"):
+        context.user_data["delete_message_ids"] = []
+    context.user_data["delete_message_ids"].append(message.message_id)
+
+
+async def edit_phone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    effective_user = UsersDb.get_user_by_tg(update.effective_user.id)
+    if not effective_user or not effective_user["is_admin"]:
+        context.user_data["edit"] = False
+        await contact(update, context)
+        return
+
+    context.user_data["state"] = State.EDIT_PHONE.name
+    context.user_data["user_id"] = ObjectId(
+        update.callback_query.data.split(" ")[1])
+
+    is_required = "phone" in REQUIRED_FIELDS
+
+    await context.bot.delete_message(
+        chat_id=update.effective_chat.id,
+        message_id=update.effective_message.message_id
+    )
+    message = await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=Languages.msg("send_phone", update),
+        reply_markup=keyboards.cancel(update) if is_required else keyboards.reset(update),
+        parse_mode=PARSE_MODE,
+    )
+    if not context.user_data.get("delete_message_ids"):
+        context.user_data["delete_message_ids"] = []
+    context.user_data["delete_message_ids"].append(message.message_id)
+
+
+async def edit_email(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    effective_user = UsersDb.get_user_by_tg(update.effective_user.id)
+    if not effective_user or not effective_user["is_admin"]:
+        context.user_data["edit"] = False
+        await contact(update, context)
+        return
+
+    context.user_data["state"] = State.EDIT_EMAIL.name
+    context.user_data["user_id"] = ObjectId(
+        update.callback_query.data.split(" ")[1])
+
+    is_required = "email" in REQUIRED_FIELDS
+
+    await context.bot.delete_message(
+        chat_id=update.effective_chat.id,
+        message_id=update.effective_message.message_id
+    )
+    message = await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=Languages.msg("send_email", update),
+        reply_markup=keyboards.cancel(update) if is_required else keyboards.reset(update),
+        parse_mode=PARSE_MODE,
+    )
+    if not context.user_data.get("delete_message_ids"):
+        context.user_data["delete_message_ids"] = []
+    context.user_data["delete_message_ids"].append(message.message_id)
+
+
+async def user_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    effective_user = UsersDb.get_user_by_tg(update.effective_user.id)
+    if not effective_user or not effective_user["is_admin"]:
+        context.user_data["edit"] = False
+        await contact(update, context)
+        return
+
+    user_id = ObjectId(update.callback_query.data.split(" ")[1])
+
+    user_obj = UsersDb.get_user(user_id)
+    UsersDb.edit_user(user_id, {"is_admin": not user_obj["is_admin"]})
+
+    await contact(update, context)
+
+
+async def user_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    effective_user = UsersDb.get_user_by_tg(update.effective_user.id)
+    if not effective_user or not effective_user["is_admin"]:
+        context.user_data["edit"] = False
+        await contact(update, context)
+        return
+
+    user_id = ObjectId(update.callback_query.data.split(" ")[1])
+
+    user_obj = UsersDb.get_user(user_id)
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=Languages.msg("user_confirm_delete", update),
+        reply_markup=keyboards.confirm_delete(update, user_obj),
+        parse_mode=PARSE_MODE,
+    )
+    await update.callback_query.answer(
+        text=Languages.msg("answer_sent", update),
+    )
+
+
+async def user_confirm_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not context.user_data.get("delete_message_ids"):
+        context.user_data["delete_message_ids"] = []
+    context.user_data["delete_message_ids"].append(update.effective_message.message_id)
+    await delete_messages(update, context)
+
+    effective_user = UsersDb.get_user_by_tg(update.effective_user.id)
+    if not effective_user or not effective_user["is_admin"]:
+        context.user_data["edit"] = False
+        await contact(update, context)
+        return
+
+    user_id = ObjectId(update.callback_query.data.split(" ")[1])
+
+    UsersDb.delete_user(user_id)
+
+
+async def user_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await delete_messages(update, context)
+
+    effective_user = UsersDb.get_user_by_tg(update.effective_user.id)
+    if not effective_user or not effective_user["is_admin"]:
+        context.user_data["edit"] = False
+
+
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if (context.user_data.get("state") not in [State.ADD_TOKEN.name, State.EDIT_TOKEN.name] or
-            update.message.text is None or update.message.text.strip() == ""):
-        await update.message.reply_text(Languages.msg("dont_understand", update))
-        return
-    if update.message.text == Languages.btn("cancel", update):
-        if context.user_data["state"] == State.ADD_TOKEN.name:
-            await start(update, context)
-        elif context.user_data["state"] == State.EDIT_TOKEN.name:
-            context.user_data["state"] = State.IDLE.name
-            await bot(update, context)
-        return
+    if (context.user_data.get("state") in [State.ADD_QUESTION.name, State.EDIT_QUESTION.name, State.ADD_ANSWER.name, State.EDIT_ANSWER.name] and
+            update.message.text == Languages.btn("cancel", update)):
+        context.user_data["question"] = None
+        context.user_data["state"] = State.FAQ.name
 
-    if context.user_data["state"] == State.EDIT_TOKEN.name:
-        data = await context_data_check_bot(update, context)
-        if data is None:
-            return
+        question_id = context.user_data.get("question_id")
+        context.user_data["question_id"] = None
 
-    user_bot = CustomBot(update.message.text)
-    if not await user_bot.run():
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text=Languages.msg("invalid_token", update),
-            parse_mode=PARSE_MODE,
-        )
-        await bot_token(update, context)
+        if context.user_data["state"] in [State.ADD_QUESTION.name, State.ADD_ANSWER.name]:
+            await faq(update, context)
+        else:
+            if not context.user_data.get("delete_message_ids"):
+                context.user_data["delete_message_ids"] = []
+            context.user_data["delete_message_ids"].append(update.effective_message.message_id)
+
+            await faq_ans(update, context, question_id=question_id)
         return
 
-    if context.user_data["state"] == State.EDIT_TOKEN.name:
-        bot_id = context.user_data.get("bot_id")
-        if bot_id is None:
-            await user_bot.stop()
-            await start(update, context)
-            return
+    if (context.user_data.get("state") in [State.NAME.name, State.JOB_TITLE.name, State.UNIT.name, State.PLACE.name, State.PHONE.name, State.EMAIL.name] and
+            update.message.text == Languages.btn("cancel", update)):
+        context.user_data["user"] = None
+        context.user_data["search"] = None
+        context.user_data["state"] = State.IDLE.name
 
-        bot_obj = BotsDb.get_bot(bot_id)
-        if bot_obj is None:
-            await user_bot.stop()
-            await context.bot.send_message(
+        effective_user = UsersDb.get_user_by_tg(update.effective_user.id)
+        if effective_user and effective_user["is_admin"]:
+            context.user_data["state"] = State.CONTACTS.name
+            await contacts(update, context)
+        return
+
+    if (context.user_data.get("state") in [State.EDIT_NAME.name, State.EDIT_JOB.name, State.EDIT_UNIT.name, State.EDIT_PLACE.name, State.EDIT_PHONE.name, State.EDIT_EMAIL.name] and
+            update.message.text == Languages.btn("cancel", update)):
+        context.user_data["search"] = None
+        context.user_data["state"] = State.CONTACTS.name
+
+        user_id = context.user_data.get("user_id")
+        context.user_data["user_id"] = None
+
+        if not context.user_data.get("delete_message_ids"):
+            context.user_data["delete_message_ids"] = []
+        context.user_data["delete_message_ids"].append(update.effective_message.message_id)
+
+        await contact(update, context, user_id=user_id)
+        return
+
+    effective_user = UsersDb.get_user_by_tg(update.effective_user.id)
+    if effective_user and effective_user["is_admin"]:
+        if context.user_data["state"] in [State.ADD_QUESTION.name, State.EDIT_QUESTION.name]:
+            question = update.message.text
+            if question is None or question.strip() == "":
+                message = await context.bot.send_message(
+                    chat_id=update.effective_chat.id,
+                    text=Languages.msg("invalid_question", update),
+                    parse_mode=PARSE_MODE,
+                )
+
+                if not context.user_data.get("delete_message_ids"):
+                    context.user_data["delete_message_ids"] = []
+                context.user_data["delete_message_ids"].extend([
+                    update.effective_message.message_id,
+                    message.message_id
+                ])
+
+                await faq_add(update, context)
+                return
+
+            context.user_data["state"] = State(State[context.user_data["state"]].value + 1).name
+            context.user_data["question"] = {
+                "question": question,
+                "answers": [],
+            }
+            message = await context.bot.send_message(
                 chat_id=update.effective_chat.id,
-                text=Languages.msg("bot_not_found", update),
+                text=Languages.msg("send_answer", update),
+                reply_markup=keyboards.cancel(update),
                 parse_mode=PARSE_MODE,
             )
-            await start(update, context)
-            return
 
-        if bot_obj["bot_id"] != user_bot.app.bot.id:
-            await user_bot.stop()
-            await context.bot.send_message(
+            if context.user_data.get("state") == State.EDIT_QUESTION.name:
+                if not context.user_data.get("delete_message_ids"):
+                    context.user_data["delete_message_ids"] = []
+                context.user_data["delete_message_ids"].extend([
+                    update.effective_message.message_id,
+                    message.message_id
+                ])
+
+            return
+        elif context.user_data["state"] in [State.ADD_ANSWER.name, State.EDIT_ANSWER.name]:
+            question = context.user_data.get("question")
+            if question is None:
+                context.user_data["search"] = None
+                await faq(update, context, delete=True)
+                return
+
+            if update.message.text == Languages.btn("stop_answer", update):
+                if not context.user_data.get("delete_message_ids"):
+                    context.user_data["delete_message_ids"] = []
+                context.user_data["delete_message_ids"].append(update.effective_message.message_id)
+
+                answers = question.get("answers", [])
+                if not answers:
+                    context.user_data["question"] = None
+                    context.user_data["search"] = None
+                    await faq(update, context)
+                    return
+                if context.user_data["state"] == State.ADD_ANSWER.name:
+                    FaqDb.add_question(question["question"], answers)
+                    text = Languages.msg("question_added", update)
+                else:
+                    if context.user_data.get("question_id") is None:
+                        await faq(update, context, delete=True)
+                        return
+                    FaqDb.edit_question(context.user_data["question_id"], question["question"], answers)
+                    text = Languages.msg("question_edited", update)
+
+                await context.bot.send_message(
+                    chat_id=update.effective_chat.id,
+                    text=text,
+                    reply_markup=ReplyKeyboardRemove(),
+                    parse_mode=PARSE_MODE,
+                )
+
+                await faq(update, context)
+                return
+
+            chat_id = update.effective_chat.id
+            message_id = update.effective_message.message_id
+
+            context.user_data["question"]["answers"].append({"chat_id": chat_id, "message_id": message_id})
+
+            message = await context.bot.send_message(
                 chat_id=update.effective_chat.id,
-                text=Languages.msg("token_doesnt_match", update),
+                text=Languages.msg("send_next_answer", update),
+                reply_markup=keyboards.stop_answer(update),
                 parse_mode=PARSE_MODE,
             )
-            await bot_token(update, context)
+
+            if not context.user_data.get("delete_message_ids"):
+                context.user_data["delete_message_ids"] = []
+            context.user_data["delete_message_ids"].append(message.message_id)
+
+            return
+        elif context.user_data["state"] in [State.EDIT_NAME.name, State.EDIT_JOB.name, State.EDIT_UNIT.name, State.EDIT_PLACE.name, State.EDIT_PHONE.name, State.EDIT_EMAIL.name]:
+            if not context.user_data.get("delete_message_ids"):
+                context.user_data["delete_message_ids"] = []
+            context.user_data["delete_message_ids"].append(update.effective_message.message_id)
+
+            user_id = context.user_data.get("user_id")
+            if user_id is None:
+                await contacts(update, context)
+                return
+            if context.user_data["state"] == State.EDIT_NAME.name:
+                if "name" not in REQUIRED_FIELDS and update.message.text.strip() == Languages.btn("reset", update):
+                    UsersDb.edit_user(user_id, {"name": FIELDS["name"]})
+                else:
+                    UsersDb.edit_user(user_id, {"name": update.message.text})
+            elif context.user_data["state"] == State.EDIT_JOB.name:
+                if "job_title" not in REQUIRED_FIELDS and update.message.text.strip() == Languages.btn("reset", update):
+                    UsersDb.edit_user(user_id, {"job_title": FIELDS["job_title"]})
+                else:
+                    UsersDb.edit_user(user_id, {"job_title": update.message.text})
+            elif context.user_data["state"] == State.EDIT_UNIT.name:
+                if "unit" not in REQUIRED_FIELDS and update.message.text.strip() == Languages.btn("reset", update):
+                    UsersDb.edit_user(user_id, {"unit": FIELDS["unit"]})
+                else:
+                    UsersDb.edit_user(user_id, {"unit": update.message.text})
+            elif context.user_data["state"] == State.EDIT_PLACE.name:
+                if "place" not in REQUIRED_FIELDS and update.message.text.strip() == Languages.btn("reset", update):
+                    UsersDb.edit_user(user_id, {"place": FIELDS["place"]})
+                else:
+                    UsersDb.edit_user(user_id, {"place": update.message.text})
+            elif context.user_data["state"] == State.EDIT_PHONE.name:
+                if "phone" not in REQUIRED_FIELDS and update.message.text.strip() == Languages.btn("reset", update):
+                    UsersDb.edit_user(user_id, {"phone": FIELDS["phone"]})
+                else:
+                    phone = parse_phone(update.message.text)
+                    if not phone:
+                        message1 = await context.bot.send_message(
+                            chat_id=update.effective_chat.id,
+                            text=Languages.msg("invalid_phone", update),
+                            parse_mode=PARSE_MODE,
+                        )
+                        message2 = await context.bot.send_message(
+                            chat_id=update.effective_chat.id,
+                            text=Languages.msg("send_phone", update),
+                            reply_markup=keyboards.reset(update) if "phone" not in REQUIRED_FIELDS else keyboards.cancel(update),
+                        )
+                        if not context.user_data.get("delete_message_ids"):
+                            context.user_data["delete_message_ids"] = []
+                        context.user_data["delete_message_ids"].extend([
+                            message1.message_id,
+                            message2.message_id,
+                        ])
+                        return
+                    else:
+                        UsersDb.edit_user(user_id, {"phone": phone})
+            elif context.user_data["state"] == State.EDIT_EMAIL.name:
+                if "email" not in REQUIRED_FIELDS and update.message.text.strip() == Languages.btn("reset", update):
+                    UsersDb.edit_user(user_id, {"email": FIELDS["email"]})
+                elif not await check_email(update.message.text):
+                    message1 = await context.bot.send_message(
+                        chat_id=update.effective_chat.id,
+                        text=Languages.msg("invalid_email", update),
+                        parse_mode=PARSE_MODE,
+                    )
+                    message2 = await context.bot.send_message(
+                        chat_id=update.effective_chat.id,
+                        text=Languages.msg("send_email", update),
+                        reply_markup=keyboards.reset(update) if "email" not in REQUIRED_FIELDS else keyboards.cancel(update),
+                    )
+                    if not context.user_data.get("delete_message_ids"):
+                        context.user_data["delete_message_ids"] = []
+                    context.user_data["delete_message_ids"].extend([
+                        message1.message_id,
+                        message2.message_id,
+                    ])
+                    return
+                else:
+                    UsersDb.edit_user(user_id, {"email": update.message.text})
+            context.user_data["state"] = State.CONTACTS.name
+            await contact(update, context, user_id=user_id)
             return
 
-        BotsDb.edit_token(bot_id, update.message.text)
-        if bot_id in bots:
-            await bots[bot_id].stop()
-            bots.pop(bot_id)
+    if context.user_data.get("state", None) in [State.NAME.name, State.JOB_TITLE.name, State.UNIT.name, State.PLACE.name, State.PHONE.name, State.EMAIL.name]:
+        if update.message.text == Languages.btn("cancel", update):
+            context.user_data["user"] = None
+            if effective_user and effective_user["is_admin"]:
+                context.user_data["state"] = State.CONTACTS.name
+                await contacts(update, context)
+            elif effective_user and not effective_user["is_temp"]:
+                await context.bot.send_message(
+                    chat_id=update.effective_chat.id,
+                    text=Languages.msg("dont_understand", update),
+                    parse_mode=PARSE_MODE,
+                )
+            return
+
+        field = State[context.user_data["state"]].name.lower()
+        if (update.message.text is None or update.message.text.strip() == "" or
+                context.user_data.get("state", None) == State.PHONE.name and not parse_phone(update.message.text) or
+                context.user_data.get("state", None) == State.EMAIL.name and not await check_email(update.message.text)):
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text=Languages.msg("invalid_" + field, update),
+                parse_mode=PARSE_MODE,
+            )
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text=Languages.msg("send_" + field, update),
+                reply_markup=keyboards.cancel(update),
+                parse_mode=PARSE_MODE,
+            )
+            return
+        else:
+            if context.user_data.get("user") is None:
+                context.user_data["user"] = FIELDS.copy()
+            context.user_data["user"][field] = update.message.text
+            start_search = False
+            next_field: Optional[str] = None
+            for fld in REQUIRED_FIELDS:
+                if fld == field:
+                    start_search = True
+                elif start_search and fld in REQUIRED_FIELDS:
+                    next_field = fld
+                    break
+            if next_field is not None:
+                context.user_data["state"] = State[next_field.upper()].name
+                await context.bot.send_message(
+                    chat_id=update.effective_chat.id,
+                    text=Languages.msg("send_" + next_field, update),
+                    reply_markup=keyboards.cancel(update),
+                    parse_mode=PARSE_MODE,
+                )
+                return
+
+            fields = {
+                fld: context.user_data["user"].get(fld, "") for fld in REQUIRED_FIELDS
+            }
+            for fld in fields:
+                if fields[fld] == "" and fld in REQUIRED_FIELDS:
+                    if effective_user and effective_user["is_admin"]:
+                        context.user_data["state"] = State.CONTACTS.name
+                        await contacts(update, context)
+                        return
+                    elif await check_user(update, context):
+                        await context.bot.send_message(
+                            chat_id=update.effective_chat.id,
+                            text=Languages.msg("dont_understand", update),
+                            parse_mode=PARSE_MODE,
+                        )
+                        return
+
+            if effective_user and effective_user["is_admin"]:
+                user_id = UsersDb.add_user(context.user_data["user"])
+                await contact(update, context, user_id=user_id)
+                return
+            elif effective_user and not effective_user["is_temp"]:
+                await context.bot.send_message(
+                    chat_id=update.effective_chat.id,
+                    text=Languages.msg("dont_understand", update),
+                    parse_mode=PARSE_MODE,
+                )
+                return
+            context.user_data["user"].update({
+                "tg_id": update.effective_user.id,
+                "is_temp": True,
+            })
+            user_id = UsersDb.add_user(context.user_data["user"])
+            user_obj = UsersDb.get_user(user_id)
+
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text=Languages.msg("not_user_request", update),
+                parse_mode=PARSE_MODE,
+            )
+
+            for admin in UsersDb.get_admins():
+                try:
+                    if admin["tg_id"] == 0:
+                        continue
+
+                    await context.bot.send_message(
+                        chat_id=admin["tg_id"],
+                        text=Languages.msg("request_user", update).format(data=await user_info(user_obj, update, context.bot)),
+                        reply_markup=keyboards.accept_deny(user_id),
+                        parse_mode=PARSE_MODE,
+                    )
+                except:
+                    pass
+
+            return
+
+    context.user_data["search"] = update.message.text if update.message.text else ""
+    if context.user_data["state"] == State.FAQ.name:
+        await faq(update, context)
+    elif context.user_data["state"] == State.CONTACTS.name:
+        await contacts(update, context)
     else:
-        bot_id = BotsDb.add_bot(user_bot.app.bot.id, update.message.text, update.effective_user.id)
-        if bot_id is None:
-            await context.bot.send_message(
-                chat_id=update.effective_chat.id,
-                text=Languages.msg("bot_exists", update),
-                parse_mode=PARSE_MODE,
-            )
-            await bot_token(update, context)
-            return
-        context.user_data["bot_id"] = bot_id
-
-    bots[bot_id] = user_bot
-    context.user_data["state"] = State.IDLE.name
-    await bot(update, context)
-
-
-async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await context.bot.delete_message(
-        chat_id=update.effective_chat.id,
-        message_id=update.effective_message.message_id
-    )
-
-
-async def bot_page(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    context.bot.delete_message(
-        chat_id=update.effective_chat.id,
-        message_id=update.effective_message.message_id
-    )
-
-    await start(update, context, int(update.callback_query.data.split(" ")[1]))
-
-
-async def callback_check_bot(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optional[tuple[ObjectId, Application]]:
-    bot_id = ObjectId(update.callback_query.data.split(" ")[1])
-    if not BotsDb.is_admin(bot_id, update.effective_user.id):
-        await update.callback_query.answer(Languages.msg("not_admin", update))
-        await context.bot.delete_message(
-            chat_id=update.effective_chat.id,
-            message_id=update.effective_message.message_id
-        )
-        await start(update, context)
-        return
-
-    if bot_id not in bots:
-        await update.callback_query.answer(Languages.msg("bot_not_found", update))
-        await context.bot.delete_message(
-            chat_id=update.effective_chat.id,
-            message_id=update.effective_message.message_id
-        )
-        await start(update, context)
-        return
-
-    app = bots[bot_id].app
-    if app is None:
-        bots.pop(bot_id)
-        await update.callback_query.answer(Languages.msg("bot_not_found", update))
-        await context.bot.delete_message(
-            chat_id=update.effective_chat.id,
-            message_id=update.effective_message.message_id
-        )
-        await start(update, context)
-        return
-
-    return bot_id, app
-
-
-async def context_data_check_bot(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optional[tuple[ObjectId, Application]]:
-    bot_id = context.user_data.get("bot_id")
-    if bot_id is None:
-        await context.bot.delete_message(
-            chat_id=update.effective_chat.id,
-            message_id=update.effective_message.message_id
-        )
-        await start(update, context)
-        return
-
-    if not BotsDb.is_admin(bot_id, update.effective_user.id):
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text=Languages.msg("not_admin", update),
-            parse_mode=PARSE_MODE,
-        )
-        await context.bot.delete_message(
-            chat_id=update.effective_chat.id,
-            message_id=update.effective_message.message_id
-        )
-        await start(update, context)
-        return
-
-    if bot_id not in bots:
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text=Languages.msg("bot_not_found", update),
-            parse_mode=PARSE_MODE,
-        )
-        await context.bot.delete_message(
-            chat_id=update.effective_chat.id,
-            message_id=update.effective_message.message_id
-        )
-        await start(update, context)
-        return
-
-    app = bots[bot_id].app
-    if app is None:
-        bots.pop(bot_id)
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text=Languages.msg("bot_not_found", update),
-            parse_mode=PARSE_MODE,
-        )
-        await context.bot.delete_message(
-            chat_id=update.effective_chat.id,
-            message_id=update.effective_message.message_id
-        )
-        await start(update, context)
-        return
-
-    return bot_id, app
-
-
-async def bot(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await context.bot.delete_message(
-        chat_id=update.effective_chat.id,
-        message_id=update.effective_message.message_id
-    )
-    if update.callback_query is not None:
-        data = await callback_check_bot(update, context)
-    else:
-        data = await context_data_check_bot(update, context)
-    if data is None:
-        return
-    bot_id, app = data
-
-    bot_username = app.bot.bot.username
-
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text=Languages.msg("your_bot", update).format(bot_username=bot_username),
-        reply_markup=keyboards.bot(BotsDb.get_bot(bot_id), update),
-        parse_mode=PARSE_MODE,
-    )
-
-
-async def bot_private(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    data = await callback_check_bot(update, context)
-    if data is None:
-        return
-    bot_id, app = data
-
-    BotsDb.toggle_private(bot_id)
-
-    await bot(update, context)
-
-
-async def bot_required(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    data = await callback_check_bot(update, context)
-    if data is None:
-        return
-    bot_id, app = data
-
-    await context.bot.delete_message(
-        chat_id=update.effective_chat.id,
-        message_id=update.effective_message.message_id
-    )
-
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text=Languages.msg("required", update),
-        reply_markup=keyboards.required(BotsDb.get_bot(bot_id), update),
-        parse_mode=PARSE_MODE,
-    )
-
-
-async def required_field(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    data = await callback_check_bot(update, context)
-    if data is None:
-        return
-    bot_id, app = data
-
-    field = "_".join(update.callback_query.data.split(" ")[0].split("_")[1:])
-
-    if field == "name":
-        await update.callback_query.answer(Languages.msg("name_is_required", update))
-        return
-
-    BotsDb.toggle_required(bot_id, field)
-
-    await bot_required(update, context)
-
-
-async def required_back(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await bot(update, context)
-
-
-async def bot_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    data = await callback_check_bot(update, context)
-    if data is None:
-        return
-    bot_id, app = data
-    BotsDb.delete_bot(bot_id)
-    if bot_id in bots:
-        await bots[bot_id].stop()
-        bots.pop(bot_id)
-
-    await context.bot.delete_message(
-        chat_id=update.effective_chat.id,
-        message_id=update.effective_message.message_id
-    )
-    await start(update, context)
-
-
-async def bot_back(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await context.bot.delete_message(
-        chat_id=update.effective_chat.id,
-        message_id=update.effective_message.message_id
-    )
-    await start(update, context)
+        await faq(update, context)

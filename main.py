@@ -5,57 +5,81 @@ from telegram.ext import filters
 
 from misc import callback
 
-from db import BotsDb
-from CustomBot.custom_bot import CustomBot
-from state import bots
-
 from config import BOT_TOKEN
-from CustomBot.bot import Bot
+from bot import Bot
 
-from handlers import start, \
-    bot, bot_page, bot_token, message_handler, cancel, \
-    bot_private, bot_delete, bot_back, \
-    bot_required, required_field, required_back
+from handlers import start, edit, cancel_command, message_handler, \
+    accept, deny, \
+    \
+    faq_command, faq_page, \
+    faq_add, faq_ans, \
+    question_edit, question_delete, question_cancel, \
+    \
+    contacts_command, contacts_page, \
+    contact, contacts_add, \
+    \
+    similar_page, similar_user, \
+    \
+    edit_contact_name, edit_job_title, edit_unit, edit_place, edit_phone, edit_email, \
+    user_admin, user_delete, user_confirm_delete, user_cancel
 
 
 async def main():
-    for bot_obj in BotsDb.get_bots():
-        user_bot = CustomBot(bot_obj["bot_token"])
-        if not await user_bot.run():
-            continue
-        bots[bot_obj["_id"]] = user_bot
-
     BOT = Bot(BOT_TOKEN)
 
     BOT.handlers = [
         CommandHandler(["start", "help"], start),
+        CommandHandler("edit", edit),
+        CallbackQueryHandler(cancel_command, "cancel"),
+
+        CallbackQueryHandler(accept, "^accept"),
+        CallbackQueryHandler(deny, "^deny"),
+
+        CommandHandler("faq", faq_command),
+        CallbackQueryHandler(faq_page, "^faq_page"),
+
+        CallbackQueryHandler(faq_add, "faq_add"),
+        CallbackQueryHandler(faq_ans, "^faq"),
+
+        CallbackQueryHandler(question_edit, "^question_edit"),
+        CallbackQueryHandler(question_delete, "^question_delete"),
+        CallbackQueryHandler(question_cancel, "question_cancel"),
+
+        CommandHandler("contacts", contacts_command),
+        CallbackQueryHandler(contacts_page, "^contacts_page"),
+        CallbackQueryHandler(contacts_add, "contacts_add"),
+
+        CallbackQueryHandler(similar_page, "^similar_page"),
+        CallbackQueryHandler(similar_user, "^similar"),
+
+        CallbackQueryHandler(edit_contact_name, "^user_name"),
+        CallbackQueryHandler(edit_job_title, "^user_job_title"),
+        CallbackQueryHandler(edit_unit, "^user_unit"),
+        CallbackQueryHandler(edit_place, "^user_place"),
+        CallbackQueryHandler(edit_phone, "^user_phone"),
+        CallbackQueryHandler(edit_email, "^user_email"),
+        CallbackQueryHandler(user_admin, "^user_admin"),
+        CallbackQueryHandler(user_delete, "^user_delete"),
+        CallbackQueryHandler(user_confirm_delete, "^user_confirm_delete"),
+        CallbackQueryHandler(user_cancel, "^user_cancel"),
+
+        CallbackQueryHandler(contact, "^user"),
+
         CallbackQueryHandler(callback, "^callback"),
-
-        CallbackQueryHandler(bot, "^bots_bot"),
-        CallbackQueryHandler(bot_page, "^bots_page"),
-        CallbackQueryHandler(bot_token, "bots_add"),
-        CallbackQueryHandler(cancel, "cancel"),
-
-        CallbackQueryHandler(bot_token, "^bot_edit"),
-        CallbackQueryHandler(bot_private, "^bot_private"),
-        CallbackQueryHandler(bot_delete, "^bot_delete"),
-        CallbackQueryHandler(bot_back, "bot_back"),
-
-        CallbackQueryHandler(bot_required, "^bot_required"),
-        CallbackQueryHandler(required_back, "^required_back"),
-        CallbackQueryHandler(required_field, "^required_"),
-
-        MessageHandler(filters.ALL, message_handler)
+        MessageHandler(filters.ALL, message_handler),
     ]
 
-    await BOT.run(start_command=True)
+    BOT.commands = [
+        "help",
+        "faq",
+        "contacts",
+    ]
+
+    await BOT.run()
 
     await asyncio.Event().wait()
 
     await BOT.stop()
-
-    for user_bot in bots.values():
-        await user_bot.stop()
 
 
 if __name__ == "__main__":

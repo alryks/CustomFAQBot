@@ -31,7 +31,7 @@ async def callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.callback_query.answer(" ".join(update.callback_query.data.split(" ")[1:]))
 
 
-def create_faq(faq: list, bot_username: str, caption: str, update: Update, page: int = 1) -> str:
+def create_faq(faq: list, update: Update, page: int = 1) -> str:
     n = len(faq)
     if n == 0:
         text = Languages.msg("empty", update)
@@ -42,12 +42,7 @@ def create_faq(faq: list, bot_username: str, caption: str, update: Update, page:
         page = max(page, 1)
         page = min(page, max_pages)
 
-        text = "<b>"
-        if caption.strip():
-            text += caption + ":"
-        else:
-            text += Languages.msg("faq", update).format(bot_username=bot_username)
-        text += "</b>"
+        text = Languages.msg("faq", update)
 
         for i in range((page - 1) * max_rows, min(page * max_rows, n)):
             text += f"\n\n<b>{i + 1}.</b> {faq[i]['question']}"
@@ -55,7 +50,7 @@ def create_faq(faq: list, bot_username: str, caption: str, update: Update, page:
     return text
 
 
-async def create_contacts(users: list, bot: Bot, update: Update, page: int = 1) -> str:
+async def create_contacts(users: list, bot: Bot, update: Update, page: int = 1, similar: bool = False) -> str:
     n = len(users)
     if n == 0:
         text = Languages.msg("empty", update)
@@ -66,7 +61,10 @@ async def create_contacts(users: list, bot: Bot, update: Update, page: int = 1) 
         page = max(page, 1)
         page = min(page, max_pages)
 
-        text = ""
+        if similar:
+            text = Languages.msg("similar_users", update)
+        else:
+            text = Languages.msg("contacts_caption", update)
 
         for i in range((page - 1) * max_rows, min(page * max_rows, n)):
             if users[i].get("name", "") == "":
@@ -163,24 +161,18 @@ async def user_info(user_obj: dict, update: Update, bot: Bot) -> str:
     return text
 
 
-def get_first_required_field(bot_obj: dict) -> str:
-    for field, value in bot_obj["required_fields"].items():
-        if value:
-            return field
-    return ""
-
-
 def filter_faq(faq: list, search: str) -> list:
     return [question for question in faq if search.lower() in question["question"].lower()]
 
 
-def filter_contacts(users: list) -> list:
-    return [user for user in users if user.get("name", "") != ""]
+def filter_contacts(users: list, required_fields: list) -> list:
+    # don't show users if not all of their required fields are filled
+    return [user for user in users if all(user.get(field, "") != "" for field in required_fields)]
 
 
 def search_contacts(users: list, search: str) -> list:
     return [user for user in users if search.lower() in user.get("name", "").lower() or search.lower() in user.get("job_title", "").lower() or search.lower() in user.get("unit", "").lower() or search.lower() in user.get("place", "").lower() or search.lower() in user.get("phone", "").lower() or search.lower() in user.get("email", "").lower()]
 
 
-def sort_contacts(users: list) -> list:
-    return sorted(users, key=lambda user: user.get("name", "").lower())
+def sort_contacts(users: list, field: str) -> list:
+    return sorted(users, key=lambda user: user.get(field, "").lower())

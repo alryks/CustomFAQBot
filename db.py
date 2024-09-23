@@ -1,264 +1,76 @@
 import pymongo
-from pymongo.errors import DuplicateKeyError
-
 from bson import ObjectId
-
-from telegram.ext import Application
 
 from typing import Optional
 
 from config import DB
-from state import bots
 
 
-class BotsDb:
-    bots: pymongo.collection.Collection = DB.bots
-    bots.create_index("bot_id", unique=True)
+class UsersDb:
+    users: pymongo.collection.Collection = DB.users
 
     @classmethod
-    def get_bot(cls, bot_id: ObjectId) -> dict:
-        return cls.bots.find_one({"_id": bot_id})
+    def get_users(cls) -> [dict]:
+        return list(cls.users.find())
 
     @classmethod
-    def get_bot_by_id(cls, bot_id: int) -> dict:
-        return cls.bots.find_one({"bot_id": bot_id})
+    def get_user(cls, user_id: ObjectId) -> Optional[dict]:
+        return cls.users.find_one({"_id": user_id})
 
     @classmethod
-    def get_bots(cls) -> [str]:
-        return cls.bots.find({})
+    def get_user_by_tg(cls, tg_id: int) -> Optional[dict]:
+        return cls.users.find_one({"tg_id": tg_id})
 
     @classmethod
-    async def get_user_bot_usernames(cls, user_id: int) -> [(ObjectId, str)]:
-        bot_ids = cls.bots.distinct("_id", {"users": {"$elemMatch": {"tg_id": user_id, "is_admin": True}}})
-        usernames = []
-        for bot_id in bot_ids:
-            if bot_id not in bots:
-                continue
-            app: Application = bots[bot_id].app
-            if app is None:
-                bots.pop(bot_id)
-                continue
-            try:
-                usernames.append((bot_id, app.bot.bot.username))
-            except:
-                continue
-        return usernames
-
-    @classmethod
-    def add_bot(cls, bot_id: int, bot_token: str, admin: int) -> Optional[ObjectId]:
-        try:
-            bot_obj_id = cls.bots.insert_one({"bot_id": bot_id,
-                                        "bot_token": bot_token,
-                                        "is_private": False,
-                                        "users": [],
-                                        "caption": "",
-                                        "faq": [],
-                                        }).inserted_id
-            cls.add_user_with_id(bot_obj_id, admin, is_admin=True)
-            return bot_obj_id
-
-        except DuplicateKeyError:
-            return None
-
-    @classmethod
-    def edit_token(cls, bot_id: ObjectId, bot_token: str) -> None:
-        cls.bots.update_one({"_id": bot_id},
-                            {"$set": {"bot_token": bot_token}})
-
-    @classmethod
-    def toggle_private(cls, bot_id: ObjectId) -> None:
-        bot = cls.bots.find_one({"_id": bot_id})
-        if bot is None:
-            return
-        cls.bots.update_one({"_id": bot_id},
-                            {"$set": {"is_private": not bot["is_private"]}})
-
-    @classmethod
-    def is_admin(cls, bot_id: ObjectId, user_id: int) -> bool:
-        bot = cls.bots.find_one({"_id": bot_id, "users": {"$elemMatch": {"tg_id": user_id, "is_admin": True}}}, {"users.$": 1})
-        if bot is not None and bot.get("users"):
-            return True
-        return False
-
-    @classmethod
-    def get_admin_ids(cls, bot_id: ObjectId) -> [dict]:
-        bot = cls.bots.find_one({"_id": bot_id, "users.is_admin": True}, {"users.$": 1})
-        if bot is None:
+    def get_similar_users(cls, user_id: ObjectId) -> [dict]:
+        user = cls.get_user(user_id)
+        if user is None:
             return []
-        users = bot.get("users", [])
-        return [user.get("tg_id", 0) for user in users]
+        query = {}
+        for key, value in user.items():
+            if isinstance(value, str) and value != "":
+                query[key] = {"$regex": value, "$options": "i"}
+        query["tg_id"] = {"$eq": 0}
+        return list(cls.users.find(query))
 
     @classmethod
-    def is_user(cls, bot_id: ObjectId, user_id: int) -> bool:
-        bot = cls.bots.find_one({"_id": bot_id})
-        users_bot = cls.bots.find_one({"_id": bot_id, "users": {"$elemMatch": {"tg_id": user_id, "is_temp": {"$exists": False}}}}, {"users.$": 1})
-        if bot and (not bot.get("is_private", False) or
-                    users_bot and users_bot.get("users")):
-            return True
-        return False
+    def add_user(cls, data: dict) -> ObjectId:
+        insert_result = cls.users.insert_one(data)
+        return insert_result.inserted_id
 
     @classmethod
-    def is_temp_user_id(cls, bot_id: ObjectId, user_id: int) -> bool:
-        bot = cls.bots.find_one({"_id": bot_id, "users": {"$elemMatch": {"tg_id": user_id, "is_temp": True}}}, {"users.$": 1})
-        if bot and bot.get("users"):
-            return True
-        return False
+    def edit_user(cls, user_id: ObjectId, data: dict) -> None:
+        cls.users.update_one({"_id": user_id}, {"$set": data})
 
     @classmethod
-    def is_temp_user(cls, bot_id: ObjectId, user_id: ObjectId) -> bool:
-        bot = cls.bots.find_one({"_id": bot_id, "users": {"$elemMatch": {"_id": user_id, "is_temp": True}}}, {"users.$": 1})
-        if bot and bot.get("users"):
-            return True
-        return False
+    def delete_user(cls, user_id: ObjectId) -> None:
+        cls.users.delete_one({"_id": user_id})
 
     @classmethod
-    def add_user_with_id(cls, bot_id: ObjectId, user_id: int, is_admin: bool = False) -> None:
-        for user in cls.bots.find_one({"_id": bot_id}).get("users", []):
-            if user.get("tg_id", 0) == user_id:
-                return
-        cls.bots.update_one({"_id": bot_id}, {"$push": {"users": {
-            "_id": ObjectId(),
-            "tg_id": user_id,
-            "is_admin": is_admin,
-        }}})
+    def get_admins(cls) -> [dict]:
+        return cls.users.find({"is_admin": True})
+
+
+class FaqDb:
+    faq: pymongo.collection.Collection = DB.faq
 
     @classmethod
-    def add_user_with_data(cls, bot_id: ObjectId, name: str = "", job_title: str = "", unit: str = "", place: str = "", phone: str = "", email: str = "") -> ObjectId:
-        user_id = ObjectId()
-        cls.bots.update_one({"_id": bot_id}, {"$addToSet": {"users": {
-            "_id": user_id,
-            "tg_id": 0,
-            "is_admin": False,
-            "name": name,
-            "job_title": job_title,
-            "unit": unit,
-            "place": place,
-            "phone": phone,
-            "email": email,
-        }}})
-        return user_id
+    def get_faq(cls) -> [dict]:
+        return list(cls.faq.find())
 
     @classmethod
-    def add_temp_user(cls, bot_id: ObjectId, user_id: int, name: str = "", job_title: str = "", unit: str = "", place: str = "", phone: str = "", email: str = "") -> ObjectId:
-        user_oid = ObjectId()
-        cls.bots.update_one({"_id": bot_id}, {"$addToSet": {"users": {
-            "_id": user_oid,
-            "tg_id": user_id,
-            "is_admin": False,
-            "name": name,
-            "job_title": job_title,
-            "unit": unit,
-            "place": place,
-            "phone": phone,
-            "email": email,
-            "is_temp": True,
-        }}})
-        return user_oid
+    def get_question(cls, question_id: ObjectId) -> Optional[dict]:
+        return cls.faq.find_one({"_id": question_id})
 
     @classmethod
-    def set_perm_user(cls, bot_id: ObjectId, user_id: ObjectId) -> None:
-        cls.bots.update_one({"_id": bot_id, "users._id": user_id}, {"$unset": {"users.$.is_temp": ""}})
+    def add_question(cls, question: str, answers: list[dict]) -> ObjectId:
+        insert_result = cls.faq.insert_one({"question": question, "answers": answers})
+        return insert_result.inserted_id
 
     @classmethod
-    def delete_temp_user(cls, bot_id: ObjectId, user_id: ObjectId) -> None:
-        bot_obj = cls.bots.find_one({"_id": bot_id, "users": {"$elemMatch": {"_id": user_id, "is_temp": True}}}, {"users.$": 1})
-        if bot_obj is None:
-            return
-        users = bot_obj.get("users", [])
-        if not users:
-            return
-        cls.bots.update_one({"_id": bot_id}, {"$pull": {"users": {"_id": user_id}}})
+    def edit_question(cls, question_id: ObjectId, question: str, answers: list[dict]) -> None:
+        cls.faq.update_one({"_id": question_id}, {"$set": {"question": question, "answers": answers}})
 
     @classmethod
-    def edit_user(cls, bot_id: ObjectId, user_id: ObjectId, **kwargs) -> None:
-        cls.bots.update_one({"_id": bot_id, "users._id": user_id}, {"$set": {f"users.$.{k}": v for k, v in kwargs.items() if v != ""}})
-
-    @classmethod
-    def reset_field(cls, bot_id: ObjectId, user_id: ObjectId, field: str) -> None:
-        cls.bots.update_one({"_id": bot_id, "users._id": user_id}, {"$set": {f"users.$.{field}": ""}})
-
-    @classmethod
-    def toggle_admin(cls, bot_id: ObjectId, user_id: ObjectId) -> None:
-        users = cls.bots.find_one({"_id": bot_id, "users._id": user_id}, {"users.$": 1}).get("users", [])
-        if not users:
-            return
-        cls.bots.update_one({"_id": bot_id, "users._id": user_id}, {"$set": {"users.$.is_admin": not users[0].get("is_admin", False)}})
-
-    @classmethod
-    def get_users_to_merge(cls, bot_id: ObjectId) -> [dict]:
-        bot = cls.bots.find_one({"_id": bot_id})
-        users = bot.get("users", [])
-        users = [user for user in users if user.get("tg_id", 0) != 0 and user.get("is_temp", False) is False]
-        return users
-
-    @classmethod
-    def merge_id_and_data_users(cls, bot_id: ObjectId, id_user: ObjectId, data_user: ObjectId) -> bool:
-        users = cls.bots.find_one({"_id": bot_id, "users._id": id_user}, {"users.$": 1}).get("users", [])
-        if not users:
-            return False
-        id_user_obj = users[0]
-        cls.bots.update_one({"_id": bot_id, "users._id": data_user}, {"$set": {"users.$.tg_id": id_user_obj["tg_id"]}})
-        cls.bots.update_one({"_id": bot_id}, {"$pull": {"users": {"_id": id_user}}})
-        return True
-
-    @classmethod
-    def unmerge_user(cls, bot_id: ObjectId, user_id: ObjectId) -> bool:
-        users = cls.bots.find_one({"_id": bot_id, "users._id": user_id}, {"users.$": 1}).get("users", [])
-        if not users:
-            return False
-        user = users[0]
-        if user.get("name", "") == "":
-            return False
-
-        cls.bots.update_one({"_id": bot_id, "users._id": user_id}, {"$set": {"users.$.tg_id": 0}})
-        cls.add_user_with_id(bot_id, user["tg_id"])
-        return True
-
-    @classmethod
-    def get_user(cls, bot_id: ObjectId, user_id: ObjectId) -> Optional[dict]:
-        bot_obj = cls.bots.find_one({"_id": bot_id, "users._id": user_id}, {"users.$": 1})
-        if bot_obj is None:
-            return
-        if bot_obj["users"]:
-            return bot_obj["users"][0]
-
-    @classmethod
-    def toggle_required(cls, bot_id: ObjectId, field: str) -> None:
-        bot = cls.bots.find_one({"_id": bot_id})
-        if bot is None:
-            return
-        if "required_fields" not in bot:
-            return
-        cls.bots.update_one({"_id": bot_id}, {"$set": {f"required_fields.{field}": not bot["required_fields"].get(field, False)}})
-
-    @classmethod
-    def delete_bot(cls, bot_id: ObjectId) -> None:
-        cls.bots.delete_one({"_id": bot_id})
-
-    @classmethod
-    def edit_caption(cls, bot_id: ObjectId, caption: str) -> None:
-        cls.bots.update_one({"_id": bot_id}, {"$set": {"caption": caption}})
-
-    @classmethod
-    def add_question(cls, bot_id: ObjectId, question: str, answers: list[dict]) -> None:
-        cls.bots.update_one({"_id": bot_id}, {"$push": {"faq": {"_id": ObjectId(), "question": question, "answers": answers}}})
-
-    @classmethod
-    def edit_question(cls, bot_id: ObjectId, question_id: ObjectId, question: str, answers: list[dict]) -> None:
-        cls.bots.update_one({"_id": bot_id, "faq._id": question_id}, {"$set": {"faq.$.question": question, "faq.$.answers": answers}})
-
-    @classmethod
-    def delete_question(cls, bot_id: ObjectId, question_id: ObjectId) -> None:
-        cls.bots.update_one({"_id": bot_id}, {"$pull": {"faq": {"_id": question_id}}})
-
-    @classmethod
-    def get_question(cls, bot_id: ObjectId, question_id: ObjectId) -> Optional[dict]:
-        bot_obj = cls.bots.find_one({"_id": bot_id, "faq._id": question_id}, {"faq.$": 1})
-        if bot_obj is None:
-            return
-        if bot_obj["faq"]:
-            return bot_obj["faq"][0]
-
-    @classmethod
-    def delete_user(cls, bot_id: ObjectId, id: ObjectId) -> None:
-        cls.bots.update_one({"_id": bot_id}, {"$pull": {"users": {"_id": id}}})
+    def delete_question(cls, question_id: ObjectId) -> None:
+        cls.faq.delete_one({"_id": question_id})

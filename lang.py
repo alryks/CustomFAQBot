@@ -41,41 +41,17 @@ class Languages:
             "en": "Welcome! I'm your company navigator. I can help you find the right employee and answer questions.",
             "ru": "Приветствую! Я твой навигатор по компании. Я могу помочь тебе найти нужного сотрудника, а также ответить на вопросы."
         },
-        "your_faqs": {
-            "en": "Your FAQs:",
-            "ru": "Ваши ЧаВо:"
+        "faq": {
+            "en": "<b>Frequently Asked Questions:</b>",
+            "ru": "<b>Часто задаваемые вопросы:</b>"
         },
-        "no_faqs": {
-            "en": "You have no FAQs!",
-            "ru": "У вас нет ЧаВо!"
+        "contacts_caption": {
+            "en": "<b>Employee contacts:</b>",
+            "ru": "<b>Контакты сотрудников:</b>"
         },
-        "your_bot": {
-            "en": "Your @{bot_username}:",
-            "ru": "Ваш @{bot_username}:"
-        },
-        "send_token": {
-            "en": "Send token of your bot:",
-            "ru": "Отправьте токен вашего бота:"
-        },
-        "invalid_token": {
-            "en": "Invalid token!",
-            "ru": "Некорректный токен!"
-        },
-        "bot_not_found": {
-            "en": "Bot not found!",
-            "ru": "Бот не найден!"
-        },
-        "token_doesnt_match": {
-            "en": "Token doesn't match the bot!",
-            "ru": "Токен не соответствует боту!"
-        },
-        "bot_exists": {
-            "en": "Bot already exists!",
-            "ru": "Бот уже существует!"
-        },
-        "users": {
-            "en": "@{bot_username} users:",
-            "ru": "Пользователи @{bot_username}:"
+        "similar_users": {
+            "en": "<b>Employees with similar data already exist without a linked Telegram account:</b>",
+            "ru": "<b>С похожими данными уже есть сотрудники без привязанного Telegram аккаунта:</b>"
         },
         "general_info": {
             "en": "<b>General info:</b>",
@@ -86,8 +62,8 @@ class Languages:
             "ru": "<b>Контакты:</b>"
         },
         "name": {
-            "en": "<i>Name:</i> {name}",
-            "ru": "<i>Имя:</i> {name}"
+            "en": "<i>Full name:</i> {name}",
+            "ru": "<i>ФИО:</i> {name}"
         },
         "job_title": {
             "en": "<i>Job Title:</i> {job_title}",
@@ -118,8 +94,8 @@ class Languages:
             "ru": "Отправьте ФИО:"
         },
         "invalid_name": {
-            "en": "Invalid user name!",
-            "ru": "Некорректное имя пользователя!"
+            "en": "Invalid name!",
+            "ru": "Некорректное ФИО!"
         },
         "send_job_title": {
             "en": "Send job title:",
@@ -161,25 +137,9 @@ class Languages:
             "en": "Invalid email!",
             "ru": "Некорректная почта!"
         },
-        "user_not_unmerged": {
-            "en": "User not unmerged!",
-            "ru": "Пользователь не разъединен!"
-        },
-        "user_merge": {
-            "en": "Choose user to merge with:",
-            "ru": "Выберите пользователя для объединения:"
-        },
-        "user_not_merged": {
-            "en": "User not merged!",
-            "ru": "Пользователь не объединен!"
-        },
-        "required": {
-            "en": "Required fields:",
-            "ru": "Обязательные поля:"
-        },
-        "name_is_required": {
-            "en": "Name is required!",
-            "ru": "Имя обязательно!"
+        "user_confirm_delete": {
+            "en": "Are you sure you want to delete this employee?",
+            "ru": "Вы уверены, что хотите удалить этого сотрудника?"
         },
         "not_admin": {
             "en": "You are not bot admin!",
@@ -198,8 +158,8 @@ class Languages:
             "ru": "Пользователь запросил доступ к боту со следующими данными:\n{data}"
         },
         "already_requested": {
-            "en": "You have already requested access to @{bot_name}!",
-            "ru": "Вы уже запросили доступ к @{bot_name}!"
+            "en": "You have already requested access to боту!",
+            "ru": "Вы уже запросили доступ к боту!"
         },
         "user_accepted": {
             "en": "Your request to access the bot was accepted!",
@@ -210,28 +170,12 @@ class Languages:
             "ru": "Ваш запрос на доступ к боту был отклонен!"
         },
         "edit_true": {
-            "en": "You entered edit mode!",
-            "ru": "Вы вошли в режим редактирования!"
+            "en": "You ENTERED edit mode!",
+            "ru": "Вы ВОШЛИ в режим редактирования!"
         },
         "edit_false": {
-            "en": "You exited edit mode!",
-            "ru": "Вы вышли из режима редактирования!"
-        },
-        "faq": {
-            "en": "FAQ for @{bot_username}:",
-            "ru": "ЧаВо для @{bot_username}:"
-        },
-        "send_caption": {
-            "en": "Send caption for @{bot_username}:",
-            "ru": "Отправьте описание для @{bot_username}:"
-        },
-        "invalid_caption": {
-            "en": "Invalid caption!",
-            "ru": "Некорректное описание!"
-        },
-        "caption_edited": {
-            "en": "Caption edited!",
-            "ru": "Описание изменено!"
+            "en": "You EXITED edit mode!",
+            "ru": "Вы ВЫШЛИ из режима редактирования!"
         },
         "send_question": {
             "en": "Send question:",
@@ -315,29 +259,17 @@ class Languages:
             "en": "✏️Edit",
             "ru": "✏️Изменить"
         },
-        "edit_token": {
-            "en": "🔑Edit Token",
-            "ru": "🔑Изменить токен"
-        },
-        "edit_caption": {
-            "en": "📝Edit Caption",
-            "ru": "📝Изменить описание"
-        },
-        "private": {
-            "en": "🔒Private: {private}",
-            "ru": "🔒Приватный: {private}"
-        },
-        "users": {
-            "en": "👥Users",
-            "ru": "👥Пользователи"
-        },
         "add_user": {
-            "en": "➕Add User",
-            "ru": "➕Добавить пользователя"
+            "en": "➕Add Employee",
+            "ru": "➕Добавить сотрудника"
+        },
+        "to_user": {
+            "en": "👤To Employee",
+            "ru": "👤К сотруднику"
         },
         "edit_user_name": {
-            "en": "🏷️Edit Name",
-            "ru": "🏷️Изменить имя"
+            "en": "🏷️Edit Full Name",
+            "ru": "🏷️Изменить ФИО"
         },
         "edit_job_title": {
             "en": "💼Edit Job Title",
@@ -362,42 +294,6 @@ class Languages:
         "user_admin": {
             "en": "🚨Admin: {admin}",
             "ru": "🚨Админ: {admin}"
-        },
-        "merge": {
-            "en": "🔗Merge",
-            "ru": "🔗Объединить"
-        },
-        "unmerge": {
-            "en": "⛓️Unmerge",
-            "ru": "⛓️Разъединить"
-        },
-        "required": {
-            "en": "🔐Required fields",
-            "ru": "🔐Обязательные поля"
-        },
-        "required_name": {
-            "en": "🏷️Name: {status}",
-            "ru": "🏷️Имя: {status}"
-        },
-        "required_job_title": {
-            "en": "💼Job Title: {status}",
-            "ru": "💼Должность: {status}"
-        },
-        "required_unit": {
-            "en": "🏢Unit: {status}",
-            "ru": "🏢Подразделение: {status}"
-        },
-        "required_place": {
-            "en": "📍Place: {status}",
-            "ru": "📍Место работы: {status}"
-        },
-        "required_phone": {
-            "en": "📞Phone: {status}",
-            "ru": "📞Телефон: {status}"
-        },
-        "required_email": {
-            "en": "📧Email: {status}",
-            "ru": "📧Почта: {status}"
         },
         "delete": {
             "en": "❌Delete",
