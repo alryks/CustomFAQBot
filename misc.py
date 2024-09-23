@@ -12,6 +12,8 @@ from lang import Languages
 from verify_email import verify_email_async
 import phonenumbers
 
+from db import UsersDb
+
 
 def parse_phone(phone: str) -> Optional[str]:
     try:
@@ -129,6 +131,11 @@ async def user_info(user_obj: dict, update: Update, bot: Bot) -> str:
     if user_obj.get("name", "") != "":
         general_info += Languages.msg("name", update).format(
             name=user_obj["name"]) + "\n"
+    if user_obj.get("supervisor", None) is not None:
+        supervisor_obj = UsersDb.get_user(user_obj["supervisor"])
+        if supervisor_obj:
+            general_info += Languages.msg("supervisor", update).format(
+                supervisor=supervisor_obj["name"]) + "\n"
     if user_obj.get("job_title", "") != "":
         general_info += Languages.msg("job_title", update).format(
             job_title=user_obj["job_title"]) + "\n"

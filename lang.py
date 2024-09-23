@@ -65,6 +65,10 @@ class Languages:
             "en": "<i>Full name:</i> {name}",
             "ru": "<i>ФИО:</i> {name}"
         },
+        "supervisor": {
+            "en": "<i>Supervisor:</i> {supervisor}",
+            "ru": "<i>Руководитель:</i> {supervisor}"
+        },
         "job_title": {
             "en": "<i>Job Title:</i> {job_title}",
             "ru": "<i>Должность:</i> {job_title}"
