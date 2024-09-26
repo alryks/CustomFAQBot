@@ -5,7 +5,7 @@ from telegram.ext import ContextTypes
 
 from telegram import InlineKeyboardButton
 
-from config import ROWS_PER_PAGE, COLS_PER_PAGE
+from config import ROWS_PER_PAGE, COLS_PER_PAGE, REQUIRED_FIELDS
 
 from lang import Languages
 
@@ -183,16 +183,43 @@ def filter_contacts(users: list, required_fields: list) -> list:
 
 
 def search_contacts(users: list, search: str) -> list:
-    return [user for user in users if
-            search.lower() in user.get("name", "").lower() or
-            search.lower() in user.get("job_title", "").lower() or
-            search.lower() in user.get("unit", "").lower() or
-            search.lower() in user.get("place", "").lower() or
-            search.lower() in user.get("personal_phone", "").lower() or
-            search.lower() in user.get("work_phone", "").lower() or
-            search.lower() in str(user.get("additional_number", "")).lower() or
-            search.lower() in user.get("email", "").lower()
-            ]
+    results_by_field = {
+        "name": [],
+        "supervisor": [],
+        "job_title": [],
+        "unit": [],
+        "place": [],
+        "personal_phone": [],
+        "work_phone": [],
+        "additional_number": [],
+        "email": []
+    }
+    result = []
+    for user in users:
+        supervisor = UsersDb.get_user(user["supervisor"])
+        if search.lower() in user.get("name", "").lower():
+            results_by_field["name"].append(user)
+        elif supervisor and search.lower() in supervisor.get("name", "").lower():
+            results_by_field["supervisor"].append(user)
+        elif search.lower() in user.get("job_title", "").lower():
+            results_by_field["job_title"].append(user)
+        elif search.lower() in user.get("unit", "").lower():
+            results_by_field["unit"].append(user)
+        elif search.lower() in user.get("place", "").lower():
+            results_by_field["place"].append(user)
+        elif search.lower() in user.get("personal_phone", "").lower():
+            results_by_field["personal_phone"].append(user)
+        elif search.lower() in user.get("work_phone", "").lower():
+            results_by_field["work_phone"].append(user)
+        elif user.get("additional_number", 0) and search.lower() in str(user.get("additional_number", 0)).lower():
+            results_by_field["additional_number"].append(user)
+        elif search.lower() in user.get("email", "").lower():
+            results_by_field["email"].append(user)
+    field = "name" if not REQUIRED_FIELDS else REQUIRED_FIELDS[0]
+    for key, value in results_by_field.items():
+        result += sort_contacts(value, field)
+
+    return result
 
 
 def sort_contacts(users: list, field: str) -> list:

@@ -14,7 +14,7 @@ from db import UsersDb, FaqDb
 from state import State
 
 from misc import create_faq, filter_faq, \
-    create_contacts, search_contacts, filter_contacts, sort_contacts, \
+    create_contacts, search_contacts, filter_contacts, \
     user_info, parse_phone, check_email
 
 from lang import Languages
@@ -455,8 +455,6 @@ async def contacts(update: Update, context: ContextTypes.DEFAULT_TYPE, delete: b
     searched_contacts = search_contacts(UsersDb.get_users(), search)
     if not context.user_data.get("edit", False):
         searched_contacts = filter_contacts(searched_contacts, REQUIRED_FIELDS)
-    field = "name" if not REQUIRED_FIELDS else REQUIRED_FIELDS[0]
-    searched_contacts = sort_contacts(searched_contacts, field)
 
     text = await create_contacts(searched_contacts, context.bot, update, page)
 
