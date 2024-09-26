@@ -20,6 +20,8 @@ from handlers import start, edit, cancel_command, message_handler, \
     \
     similar_page, similar_user, \
     \
+    edit_supervisor, supervisors_page, supervisor, \
+    \
     edit_contact_name, edit_job_title, edit_unit, edit_place, \
     edit_personal_phone, edit_work_phone, edit_additional_number, edit_email, \
     user_admin, user_delete, user_confirm_delete, user_cancel
@@ -52,6 +54,10 @@ async def main():
 
         CallbackQueryHandler(similar_page, "^similar_page"),
         CallbackQueryHandler(similar_user, "^similar"),
+
+        CallbackQueryHandler(edit_supervisor, "^edit_supervisor"),
+        CallbackQueryHandler(supervisors_page, "^supervisors_page"),
+        CallbackQueryHandler(supervisor, "^supervisors"),
 
         CallbackQueryHandler(edit_contact_name, "^user_name"),
         CallbackQueryHandler(edit_job_title, "^user_job_title"),

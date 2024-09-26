@@ -14,6 +14,7 @@ class State(Enum):
     EMAIL = auto()
 
     EDIT_NAME = auto()
+    EDIT_SUPERVISOR = auto()
     EDIT_JOB = auto()
     EDIT_UNIT = auto()
     EDIT_PLACE = auto()

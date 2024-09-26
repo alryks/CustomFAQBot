@@ -101,6 +101,10 @@ class Languages:
             "en": "<i>Telegram:</i> {telegram}",
             "ru": "<i>Телеграм:</i> {telegram}"
         },
+        "supervisors": {
+            "en": "<b>Choose a supervisor:</b>",
+            "ru": "<b>Выберите руководителя:</b>"
+        },
         "send_name": {
             "en": "Send full name:",
             "ru": "Отправьте ФИО:"
@@ -296,36 +300,40 @@ class Languages:
             "ru": "👤К сотруднику"
         },
         "edit_user_name": {
-            "en": "🏷️Edit Full Name",
-            "ru": "🏷️Изменить ФИО"
+            "en": "🏷Full Name",
+            "ru": "🏷ФИО"
         },
         "edit_job_title": {
-            "en": "💼Edit Job Title",
-            "ru": "💼Изменить должность"
+            "en": "💼Job Title",
+            "ru": "💼Должность"
         },
         "edit_unit": {
-            "en": "🏢Edit Unit",
-            "ru": "🏢Изменить подразделение"
+            "en": "🏢Unit",
+            "ru": "🏢Подразделение"
         },
         "edit_place": {
-            "en": "📍Edit Place",
-            "ru": "📍Изменить место работы"
+            "en": "📍Place",
+            "ru": "📍Место работы"
+        },
+        "edit_supervisor": {
+            "en": "👥Supervisor",
+            "ru": "👥Руководитель"
         },
         "edit_personal_phone": {
-            "en": "📱Edit Personal Phone",
-            "ru": "📱Изменить личный телефон"
+            "en": "📱Personal Phone",
+            "ru": "📱Личный телефон"
         },
         "edit_work_phone": {
-            "en": "📞Edit Work Phone",
-            "ru": "📞Изменить рабочий телефон"
+            "en": "📞Work Phone",
+            "ru": "📞Рабочий телефон"
         },
         "edit_additional_number": {
-            "en": "☎️Edit Additional Number",
-            "ru": "☎️Изменить добавочный номер"
+            "en": "☎Additional Number",
+            "ru": "☎Добавочный номер"
         },
         "edit_email": {
-            "en": "📧Edit Email",
-            "ru": "📧Изменить почту"
+            "en": "📧Email",
+            "ru": "📧Почта"
         },
         "user_admin": {
             "en": "🚨Admin: {admin}",

@@ -42,27 +42,24 @@ def faq_edit(question_id: ObjectId, update: Update) -> InlineKeyboardMarkup:
     ])
 
 
-def contacts(users: list, edit: bool, update: Update, page: int = 1, similar: bool = False, user_id: Optional[ObjectId] = None) -> InlineKeyboardMarkup:
+def contacts(users: list, edit: bool, update: Update, page: int = 1, which: str = "user", user_id: Optional[ObjectId] = None) -> InlineKeyboardMarkup:
     buttons = []
-    callback_data = "similar" if similar else "user"
     for i in range(len(users)):
-        callback_data_user = f"{callback_data} {users[i]['_id']}"
-        if similar:
+        callback_data_user = f"{which} {users[i]['_id']}"
+        if which == "similar":
             callback_data_user += f" {user_id}"
         button = InlineKeyboardButton(f"{i + 1}", callback_data=callback_data_user)
         buttons.append(button)
 
-    page_name = "similar" if similar else "contacts"
-
-    keyboard = pagination(buttons, page, page_name, horizontal=True, additional_buttons=1 + int(edit), additional_info=user_id if similar else "")
+    keyboard = pagination(buttons, page, which, horizontal=True, additional_buttons=1 + int(edit), additional_info=user_id if which == "similar" else "")
 
     if edit:
         keyboard.append([InlineKeyboardButton(Languages.kbd("add_user", update), callback_data="contacts_add")])
 
-    if not similar:
-        keyboard.append([InlineKeyboardButton(Languages.kbd("cancel", update), callback_data="cancel")])
-    else:
+    if which == "similar" or which == "supervisors":
         keyboard.append([InlineKeyboardButton(Languages.kbd("to_user", update), callback_data=f"user {user_id}")])
+    else:
+        keyboard.append([InlineKeyboardButton(Languages.kbd("cancel", update), callback_data="cancel")])
 
     return InlineKeyboardMarkup(keyboard)
 
@@ -79,6 +76,9 @@ def user(user_obj: dict, admin: bool, update: Update) -> InlineKeyboardMarkup:
             InlineKeyboardButton(Languages.kbd("edit_place", update), callback_data=f"user_place {user_id}")
         ],
         [
+            InlineKeyboardButton(Languages.kbd("edit_supervisor", update), callback_data=f"edit_supervisor {user_id}")
+        ],
+        [
             InlineKeyboardButton(Languages.kbd("edit_personal_phone", update), callback_data=f"user_personal_phone {user_id}"),
             InlineKeyboardButton(Languages.kbd("edit_work_phone", update), callback_data=f"user_work_phone {user_id}")
         ],
@@ -87,10 +87,10 @@ def user(user_obj: dict, admin: bool, update: Update) -> InlineKeyboardMarkup:
             InlineKeyboardButton(Languages.kbd("edit_email", update), callback_data=f"user_email {user_id}")
         ]
     ]
-    if admin:
-        keyboard.append([
-                InlineKeyboardButton(Languages.kbd("user_admin", update).format(admin="✅" if user_obj["is_admin"] else "❌"), callback_data=f"user_admin {user_id}")
-        ])
+    # if admin:
+    #     keyboard.append([
+    #             InlineKeyboardButton(Languages.kbd("user_admin", update).format(admin="✅" if user_obj["is_admin"] else "❌"), callback_data=f"user_admin {user_id}")
+    #     ])
     keyboard.extend([
         [
             InlineKeyboardButton(Languages.kbd("delete", update), callback_data=f"user_delete {user_id}")

@@ -52,7 +52,7 @@ def create_faq(faq: list, update: Update, page: int = 1) -> str:
     return text
 
 
-async def create_contacts(users: list, bot: Bot, update: Update, page: int = 1, similar: bool = False) -> str:
+async def create_contacts(users: list, bot: Bot, update: Update, page: int = 1, which: str = "contacts") -> str:
     n = len(users)
     if n == 0:
         text = Languages.msg("empty", update)
@@ -63,10 +63,12 @@ async def create_contacts(users: list, bot: Bot, update: Update, page: int = 1, 
         page = max(page, 1)
         page = min(page, max_pages)
 
-        if similar:
+        if which == "similar":
             text = Languages.msg("similar_users", update)
-        else:
+        elif which == "contacts":
             text = Languages.msg("contacts_caption", update)
+        elif which == "supervisors":
+            text = Languages.msg("supervisors", update)
 
         for i in range((page - 1) * max_rows, min(page * max_rows, n)):
             if users[i].get("name", "") == "":

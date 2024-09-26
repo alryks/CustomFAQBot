@@ -112,7 +112,7 @@ async def accept(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     user_obj = UsersDb.get_user(ObjectId(update.callback_query.data.split(" ")[1]))
 
-    if user_obj["is_temp"]:
+    if user_obj and user_obj["is_temp"]:
         UsersDb.edit_user(user_obj["_id"], {"is_temp": False})
         await context.bot.send_message(
             chat_id=user_obj["tg_id"],
@@ -150,8 +150,8 @@ async def similar(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: O
 
     message = await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text=await create_contacts(similar_users, context.bot, update, page, similar=True),
-        reply_markup=keyboards.contacts(similar_users, False, update, page, similar=True, user_id=user_id),
+        text=await create_contacts(similar_users, context.bot, update, page, which="similar"),
+        reply_markup=keyboards.contacts(similar_users, False, update, page, which="similar", user_id=user_id),
         parse_mode=PARSE_MODE,
     )
     if not context.user_data.get("delete_message_ids"):
@@ -196,7 +196,7 @@ async def deny(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     user_obj = UsersDb.get_user(ObjectId(update.callback_query.data.split(" ")[1]))
 
-    if user_obj["is_temp"]:
+    if user_obj and user_obj["is_temp"]:
         await context.bot.send_message(
             chat_id=user_obj["tg_id"],
             text=Languages.msg("user_denied", update),
@@ -565,6 +565,70 @@ async def edit_contact_name(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     if not context.user_data.get("delete_message_ids"):
         context.user_data["delete_message_ids"] = []
     context.user_data["delete_message_ids"].append(message.message_id)
+
+
+async def edit_supervisor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    context.user_data["user_id"] = ObjectId(update.callback_query.data.split(" ")[1])
+    context.user_data["search"] = None
+    await supervisors(update, context, delete=True)
+
+
+async def supervisors(update: Update, context: ContextTypes.DEFAULT_TYPE, delete: bool = False, page: int = 1) -> None:
+    context.user_data["state"] = State.EDIT_SUPERVISOR.name
+
+    effective_user = UsersDb.get_user_by_tg(update.effective_user.id)
+    if not effective_user or not effective_user["is_admin"] or not context.user_data.get("edit", False):
+        context.user_data["edit"] = False
+        await contact(update, context)
+        return
+
+    if not context.user_data.get("user_id"):
+        await contacts(update, context)
+        return
+
+    search = context.user_data.get("search")
+    if not search:
+        search = ""
+
+    searched_contacts = search_contacts(UsersDb.get_users(), search)
+    text = await create_contacts(searched_contacts, context.bot, update, page, which="supervisors")
+
+    if delete:
+        await context.bot.delete_message(
+            chat_id=update.effective_chat.id,
+            message_id=update.effective_message.message_id
+        )
+
+    message = await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=text,
+        reply_markup=keyboards.contacts(searched_contacts, False, update, page, which="supervisors", user_id=context.user_data.get("user_id")),
+        parse_mode=PARSE_MODE,
+    )
+    if not context.user_data.get("delete_message_ids"):
+        context.user_data["delete_message_ids"] = []
+    context.user_data["delete_message_ids"].append(message.message_id)
+
+
+async def supervisors_page(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await supervisors(update, context, delete=True, page=int(update.callback_query.data.split(" ")[1]))
+
+
+async def supervisor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    effective_user = UsersDb.get_user_by_tg(update.effective_user.id)
+    if not effective_user or not effective_user["is_admin"]:
+        context.user_data["edit"] = False
+        await contact(update, context)
+        return
+
+    if not context.user_data.get("user_id"):
+        await contacts(update, context)
+        return
+
+    user_id = ObjectId(update.callback_query.data.split(" ")[1])
+    UsersDb.edit_user(context.user_data["user_id"], {"supervisor": user_id})
+
+    await contact(update, context, user_id=context.user_data["user_id"])
 
 
 async def edit_job_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
