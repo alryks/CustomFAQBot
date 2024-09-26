@@ -120,9 +120,9 @@ async def accept(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             parse_mode=PARSE_MODE,
         )
 
-    context.user_data["edit"] = True
+        context.user_data["edit"] = True
 
-    await similar(update, context, user_id=user_obj["_id"])
+        await similar(update, context, user_id=user_obj["_id"])
 
 
 async def similar(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: Optional[ObjectId] = None, delete: bool = False, page: int = 1) -> None:
