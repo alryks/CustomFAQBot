@@ -4,6 +4,9 @@ from enum import Enum, auto
 class State(Enum):
     IDLE = auto()
 
+    REPORT = auto()
+    REPORT_FEEDBACK = auto()
+
     NAME = auto()
     JOB_TITLE = auto()
     UNIT = auto()

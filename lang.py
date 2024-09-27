@@ -101,6 +101,30 @@ class Languages:
             "en": "<i>Telegram:</i> {telegram}",
             "ru": "<i>Телеграм:</i> {telegram}"
         },
+        "send_report": {
+            "en": "Describe what data is incorrect in text form:",
+            "ru": "Опишите, какие данные неверны, в текстовой форме:"
+        },
+        "report_sent": {
+            "en": "Your report has been sent!",
+            "ru": "Ваш запрос отправлен!"
+        },
+        "report": {
+            "en": "<b>A report about incorrect data has been sent:</b>\n\n{report}",
+            "ru": "<b>Было отправлено сообщение о неверных данных:</b>\n\n{report}"
+        },
+        "send_feedback": {
+            "en": "Describe your feedback in text form:",
+            "ru": "Напишите сообщение для обратной связи в текстовой форме:"
+        },
+        "report_closed": {
+            "en": "The report has been closed!",
+            "ru": "Запрос уже закрыт!"
+        },
+        "feedback": {
+            "en": "<b>Feedback on your report:</b>\n\n{feedback}",
+            "ru": "<b>Обратная связь по вашему запросу:</b>\n\n{feedback}"
+        },
         "supervisors": {
             "en": "<b>Choose a supervisor:</b>",
             "ru": "<b>Выберите руководителя:</b>"
@@ -298,6 +322,14 @@ class Languages:
         "to_user": {
             "en": "👤To Employee",
             "ru": "👤К сотруднику"
+        },
+        "report": {
+            "en": "🚨Report incorrect data",
+            "ru": "🚨Сообщить о неверных данных"
+        },
+        "report_feedback": {
+            "en": "✅Accept",
+            "ru": "✅Принять"
         },
         "edit_user_name": {
             "en": "🏷Full Name",

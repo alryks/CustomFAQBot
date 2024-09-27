@@ -6,6 +6,27 @@ from typing import Optional
 from config import DB
 
 
+class ReportsDb:
+    reports: pymongo.collection.Collection = DB.reports
+
+    @classmethod
+    def get_report(cls, report_id: ObjectId) -> Optional[dict]:
+        return cls.reports.find_one({"_id": report_id})
+
+    @classmethod
+    def add_report(cls, data: dict) -> ObjectId:
+        insert_result = cls.reports.insert_one(data)
+        return insert_result.inserted_id
+
+    @classmethod
+    def edit_report(cls, report_id: ObjectId, data: dict) -> None:
+        cls.reports.update_one({"_id": report_id}, {"$set": data})
+
+    @classmethod
+    def delete_report(cls, report_id: ObjectId) -> None:
+        cls.reports.delete_one({"_id": report_id})
+
+
 class UsersDb:
     users: pymongo.collection.Collection = DB.users
 

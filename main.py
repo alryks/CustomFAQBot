@@ -18,6 +18,8 @@ from handlers import start, edit, cancel_command, message_handler, \
     contacts_command, contacts_page, \
     contact, contacts_add, \
     \
+    report, report_feedback, \
+    \
     similar_page, similar_user, \
     \
     edit_supervisor, supervisors_page, supervisor, \
@@ -51,6 +53,9 @@ async def main():
         CommandHandler("contacts", contacts_command),
         CallbackQueryHandler(contacts_page, "^contacts_page"),
         CallbackQueryHandler(contacts_add, "contacts_add"),
+
+        CallbackQueryHandler(report_feedback, "^report_feedback"),
+        CallbackQueryHandler(report, "^report"),
 
         CallbackQueryHandler(similar_page, "^similar_page"),
         CallbackQueryHandler(similar_user, "^similar"),
