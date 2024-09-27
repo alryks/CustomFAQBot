@@ -51,7 +51,8 @@ def contacts(users: list, edit: bool, update: Update, page: int = 1, which: str 
         button = InlineKeyboardButton(f"{i + 1}", callback_data=callback_data_user)
         buttons.append(button)
 
-    keyboard = pagination(buttons, page, which, horizontal=True, additional_buttons=1 + int(edit), additional_info=user_id if which == "similar" else "")
+    pagination_callback = "contacts" if which == "user" else which
+    keyboard = pagination(buttons, page, pagination_callback, horizontal=True, additional_buttons=1 + int(edit), additional_info=user_id if which == "similar" else "")
 
     if edit:
         keyboard.append([InlineKeyboardButton(Languages.kbd("add_user", update), callback_data="contacts_add")])
