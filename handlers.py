@@ -1441,5 +1441,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await faq(update, context)
     elif context.user_data["state"] == State.CONTACTS.name:
         await contacts(update, context)
+    elif context.user_data["state"] == State.EDIT_SUPERVISOR:
+        await supervisors(update, context)
     else:
-        await faq(update, context)
+        await contacts(update, context)
