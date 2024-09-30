@@ -114,7 +114,7 @@ def report(user_obj: dict, update: Update) -> InlineKeyboardMarkup:
 def report_actions(report_obj: dict, update: Update) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
         [InlineKeyboardButton(Languages.kbd("report_feedback", update), callback_data=f"report_feedback {report_obj['_id']}")],
-        [InlineKeyboardButton(Languages.kbd("to_user", update), callback_data=f"user {report_obj['user']}")],
+        [InlineKeyboardButton(Languages.kbd("to_user", update), callback_data=f"user_edit {report_obj['user']}")],
     ])
 
 

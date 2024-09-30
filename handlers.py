@@ -20,13 +20,16 @@ from misc import create_faq, filter_faq, \
 from lang import Languages
 
 
-async def check_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+async def check_user(update: Update, context: ContextTypes.DEFAULT_TYPE, send: bool = True) -> bool:
     if not PRIVATE:
         return True
 
     user_obj = UsersDb.get_user_by_tg(update.effective_user.id)
     if user_obj and not user_obj["is_temp"]:
         return True
+
+    if not send:
+        return False
 
     if user_obj and user_obj["is_temp"]:
         await context.bot.send_message(
@@ -87,16 +90,17 @@ async def check_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool
     return False
 
 
-async def check_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+async def check_admin(update: Update, context: ContextTypes.DEFAULT_TYPE, send: bool = True) -> bool:
     user_obj = UsersDb.get_user_by_tg(update.effective_user.id)
     if user_obj and user_obj["is_admin"]:
         return True
 
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text=Languages.msg("not_admin", update),
-        parse_mode=PARSE_MODE,
-    )
+    if send:
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=Languages.msg("not_admin", update),
+            parse_mode=PARSE_MODE,
+        )
 
     return False
 
@@ -126,8 +130,7 @@ async def accept(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def similar(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: Optional[ObjectId] = None, delete: bool = False, page: int = 1) -> None:
-    effective_user = UsersDb.get_user_by_tg(update.effective_user.id)
-    if not effective_user or not effective_user["is_admin"]:
+    if not await check_admin(update, context, send=False):
         context.user_data["edit"] = False
         await context.bot.delete_message(
             chat_id=update.effective_chat.id,
@@ -164,8 +167,7 @@ async def similar_page(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 
 async def similar_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    effective_user = UsersDb.get_user_by_tg(update.effective_user.id)
-    if not effective_user or not effective_user["is_admin"]:
+    if not await check_admin(update, context, send=False):
         context.user_data["edit"] = False
         await context.bot.delete_message(
             chat_id=update.effective_chat.id,
@@ -209,13 +211,22 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     context.user_data["search"] = None
     context.user_data["state"] = State.IDLE.name
 
+    if not await check_user(update, context, send=False):
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=Languages.msg("help_unregistered", update),
+            reply_markup=ReplyKeyboardRemove(),
+            parse_mode=PARSE_MODE,
+        )
+        await check_user(update, context)
+        return
+
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text=Languages.msg("start", update),
+        text=Languages.msg("help", update),
+        reply_markup=ReplyKeyboardRemove(),
         parse_mode=PARSE_MODE,
     )
-
-    await check_user(update, context)
 
 
 async def edit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -265,7 +276,7 @@ async def faq(update: Update, context: ContextTypes.DEFAULT_TYPE, delete=False, 
         return
 
     if context.user_data.get("edit", False):
-        if not UsersDb.get_user_by_tg(update.effective_user.id)["is_admin"]:
+        if not await check_admin(update, context, send=False):
             context.user_data["edit"] = False
 
     search = context.user_data.get("search")
@@ -300,8 +311,7 @@ async def faq_page(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def faq_add(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    effective_user = UsersDb.get_user_by_tg(update.effective_user.id)
-    if not effective_user or not effective_user["is_admin"]:
+    if not await check_admin(update, context, send=False):
         context.user_data["edit"] = False
         await faq(update, context, delete=True)
         return
@@ -379,8 +389,7 @@ async def faq_ans(update: Update, context: ContextTypes.DEFAULT_TYPE, question_i
 
 
 async def question_edit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    effective_user = UsersDb.get_user_by_tg(update.effective_user.id)
-    if not effective_user or not effective_user["is_admin"]:
+    if not await check_admin(update, context, send=False):
         context.user_data["edit"] = False
 
         await delete_messages(update, context)
@@ -512,6 +521,9 @@ async def contact(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: O
     if context.user_data.get("edit", False):
         if not UsersDb.get_user_by_tg(update.effective_user.id)["is_admin"]:
             context.user_data["edit"] = False
+
+    if update.callback_query and update.callback_query.data.startswith("user_edit") and UsersDb.get_user_by_tg(update.effective_user.id)["is_admin"]:
+        context.user_data["edit"] = True
 
     if not user_id:
         user_id = ObjectId(update.callback_query.data.split(" ")[1])
@@ -1045,17 +1057,22 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             return
 
         for admin in UsersDb.get_admins():
-            if admin["tg_id"] == 0:
-                continue
+            try:
+                if admin["tg_id"] == 0:
+                    continue
 
-            await context.bot.send_message(
-                chat_id=admin["tg_id"],
-                text=Languages.msg("report", update).format(
-                    report=update.message.text,
-                ),
-                reply_markup=keyboards.report_actions(report_obj, update),
-                parse_mode=PARSE_MODE,
-            )
+                await context.bot.send_message(
+                    chat_id=admin["tg_id"],
+                    text=Languages.msg("report", update).format(
+                        who=effective_user["name"],
+                        user=user_obj["name"],
+                        report=update.message.text,
+                    ),
+                    reply_markup=keyboards.report_actions(report_obj, update),
+                    parse_mode=PARSE_MODE,
+                )
+            except Exception as e:
+                print(e)
 
         return
 
@@ -1073,9 +1090,15 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             return
 
         if update.message.text == Languages.btn("cancel", update):
+            who = UsersDb.get_user(report_obj["from"])
+            user = UsersDb.get_user(report_obj["user"])
+            if not who or not user:
+                return
             await context.bot.send_message(
                 chat_id=update.effective_chat.id,
                 text=Languages.msg("report", update).format(
+                    who=who["name"],
+                    user=user["name"],
                     report=report_obj["message"],
                 ),
                 reply_markup=keyboards.report_actions(report_obj, update),

@@ -37,9 +37,13 @@ class Languages:
             "en": "Empty...",
             "ru": "Пусто..."
         },
-        "start": {
-            "en": "Welcome! I'm your company navigator. I can help you find the right employee and answer questions.",
-            "ru": "Приветствую! Я твой навигатор по компании. Я могу помочь тебе найти нужного сотрудника, а также ответить на вопросы."
+        "help": {
+            "en": "Welcome! I'm your company navigator. I can help you find the right employee using the /contacts command, as well as answer frequently asked questions using the /faq command.",
+            "ru": "Приветствую! Я твой навигатор по компании. Я могу помочь тебе найти нужного сотрудника с помощью команды /contacts, а также ответить на часто задаваемые вопросы, используя команды /faq."
+        },
+        "help_unregistered": {
+            "en": "Welcome! I'm your company navigator. I can help you find the right employee, as well as answer frequently asked questions.",
+            "ru": "Приветствую! Я твой навигатор по компании. Я могу помочь тебе найти нужного сотрудника, а также ответить на часто задаваемые вопросы."
         },
         "faq": {
             "en": "<b>Frequently Asked Questions:</b>",
@@ -110,8 +114,8 @@ class Languages:
             "ru": "Ваш запрос отправлен!"
         },
         "report": {
-            "en": "<b>A report about incorrect data has been sent:</b>\n\n{report}",
-            "ru": "<b>Было отправлено сообщение о неверных данных:</b>\n\n{report}"
+            "en": "<b><i>{who}</i> sent a report about incorrect data for employee <i>{user}</i>:</b>\n\n{report}",
+            "ru": "<b><i>{who}</i> отправил(а) сообщение о некорректных данных у сотрудника <i>{user}</i>:</b>\n\n{report}"
         },
         "send_feedback": {
             "en": "Describe your feedback in text form:",
@@ -300,8 +304,8 @@ class Languages:
 
     _kbd = {
         "cancel": {
-            "en": "✖️Cancel",
-            "ru": "✖️Отмена"
+            "en": "✖️Close",
+            "ru": "✖️Закрыть"
         },
         "add": {
             "en": "➕Add",
@@ -325,11 +329,11 @@ class Languages:
         },
         "report": {
             "en": "🚨Report incorrect data",
-            "ru": "🚨Сообщить о неверных данных"
+            "ru": "🚨Сообщить о некорректных данных"
         },
         "report_feedback": {
-            "en": "✅Accept",
-            "ru": "✅Принять"
+            "en": "🙏Send feedback",
+            "ru": "🙏Поблагодарить"
         },
         "edit_user_name": {
             "en": "🏷Full Name",
@@ -372,8 +376,8 @@ class Languages:
             "ru": "🚨Админ: {admin}"
         },
         "delete": {
-            "en": "❌Delete",
-            "ru": "❌Удалить"
+            "en": "🗑️Delete",
+            "ru": "🗑️Удалить"
         },
         "back": {
             "en": "🔙Back",
