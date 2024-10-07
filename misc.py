@@ -1,5 +1,7 @@
 from typing import Optional
 
+from telegram.error import TelegramError
+
 from telegram import Update, Bot
 from telegram.ext import ContextTypes
 
@@ -162,9 +164,12 @@ async def user_info(user_obj: dict, update: Update, bot: Bot) -> str:
         contacts += Languages.msg("email", update).format(
             email=user_obj["email"]) + "\n"
     if user_obj.get("tg_id", 0) != 0:
-        chat = await bot.get_chat(user_obj["tg_id"])
-        username = chat.full_name + (f" @{chat.username}" if chat.username else "")
-        contacts += Languages.msg("telegram", update).format(telegram=username) + "\n"
+        try:
+            chat = await bot.get_chat(user_obj["tg_id"])
+            username = chat.full_name + (f" @{chat.username}" if chat.username else "")
+            contacts += Languages.msg("telegram", update).format(telegram=username) + "\n"
+        except TelegramError:
+            pass
 
     if general_info == "":
         text = f'{Languages.msg("contacts", update)}\n{contacts}'

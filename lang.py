@@ -324,8 +324,8 @@ class Languages:
             "ru": "➕Добавить сотрудника"
         },
         "to_user": {
-            "en": "👤To Employee",
-            "ru": "👤К сотруднику"
+            "en": "👤View Employee",
+            "ru": "👤Посмотреть сотрудника"
         },
         "report": {
             "en": "🚨Report incorrect data",
