@@ -5,7 +5,7 @@ from telegram.ext import ContextTypes
 
 from bson import ObjectId
 
-from config import PARSE_MODE, PRIVATE, FIELDS, REQUIRED_FIELDS
+from config import PARSE_MODE, PRIVATE, FIELDS, REQUIRED_FIELDS, USER_ACCESS, ADMIN_ACCESS
 
 import keyboards
 
@@ -20,18 +20,32 @@ from misc import create_faq, filter_faq, \
 from lang import Languages
 
 
-async def check_user(update: Update, context: ContextTypes.DEFAULT_TYPE, send: bool = True) -> bool:
+async def check_user(update: Update, context: ContextTypes.DEFAULT_TYPE, access: str, send: bool = True) -> bool:
+    if access in ADMIN_ACCESS:
+        user_obj = UsersDb.get_user_by_tg(update.effective_user.id)
+        if user_obj and access in user_obj["access"]:
+            return True
+
+        if send:
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text=Languages.msg("not_admin", update),
+                parse_mode=PARSE_MODE,
+            )
+
+        return False
+
     if not PRIVATE:
         return True
 
     user_obj = UsersDb.get_user_by_tg(update.effective_user.id)
-    if user_obj and not user_obj["is_temp"]:
+    if user_obj and access in user_obj["access"]:
         return True
 
     if not send:
         return False
 
-    if user_obj and user_obj["is_temp"]:
+    if user_obj and not user_obj["access"]:
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
             text=Languages.msg("already_requested", update),
@@ -43,7 +57,7 @@ async def check_user(update: Update, context: ContextTypes.DEFAULT_TYPE, send: b
         user = FIELDS.copy()
         user.update({
             "tg_id": update.effective_user.id,
-            "is_temp": True,
+            "access": [],
         })
         user_id = UsersDb.add_user(user)
 
@@ -55,7 +69,7 @@ async def check_user(update: Update, context: ContextTypes.DEFAULT_TYPE, send: b
 
         user_obj = UsersDb.get_user(user_id)
 
-        for admin in UsersDb.get_admins():
+        for admin in UsersDb.get_users_by_access("request"):
             try:
                 if admin["tg_id"] == 0:
                     continue
@@ -90,34 +104,19 @@ async def check_user(update: Update, context: ContextTypes.DEFAULT_TYPE, send: b
     return False
 
 
-async def check_admin(update: Update, context: ContextTypes.DEFAULT_TYPE, send: bool = True) -> bool:
-    user_obj = UsersDb.get_user_by_tg(update.effective_user.id)
-    if user_obj and user_obj["is_admin"]:
-        return True
-
-    if send:
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text=Languages.msg("not_admin", update),
-            parse_mode=PARSE_MODE,
-        )
-
-    return False
-
-
 async def accept(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await context.bot.delete_message(
         chat_id=update.effective_chat.id,
         message_id=update.effective_message.message_id
     )
-    if not await check_admin(update, context):
+    if not await check_user(update, context, "request"):
         context.user_data["edit"] = False
         return
 
     user_obj = UsersDb.get_user(ObjectId(update.callback_query.data.split(" ")[1]))
 
-    if user_obj and user_obj["is_temp"]:
-        UsersDb.edit_user(user_obj["_id"], {"is_temp": False})
+    if user_obj and not user_obj["access"]:
+        UsersDb.edit_user(user_obj["_id"], {"access": USER_ACCESS})
         await context.bot.send_message(
             chat_id=user_obj["tg_id"],
             text=Languages.msg("user_accepted", update),
@@ -135,7 +134,7 @@ async def accept(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def similar(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: Optional[ObjectId] = None, delete: bool = False, page: int = 1) -> None:
-    if not await check_admin(update, context, send=False):
+    if not await check_user(update, context, "contacts_mod", send=False):
         context.user_data["edit"] = False
         await context.bot.delete_message(
             chat_id=update.effective_chat.id,
@@ -172,7 +171,7 @@ async def similar_page(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 
 async def similar_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not await check_admin(update, context, send=False):
+    if not await check_user(update, context, "contacts_mod", send=False):
         context.user_data["edit"] = False
         await context.bot.delete_message(
             chat_id=update.effective_chat.id,
@@ -197,13 +196,13 @@ async def deny(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         chat_id=update.effective_chat.id,
         message_id=update.effective_message.message_id
     )
-    if not await check_admin(update, context):
+    if not await check_user(update, context, "request"):
         context.user_data["edit"] = False
         return
 
     user_obj = UsersDb.get_user(ObjectId(update.callback_query.data.split(" ")[1]))
 
-    if user_obj and user_obj["is_temp"]:
+    if user_obj and not user_obj["access"]:
         await context.bot.send_message(
             chat_id=user_obj["tg_id"],
             text=Languages.msg("user_denied", update),
@@ -216,14 +215,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     context.user_data["search"] = None
     context.user_data["state"] = State.IDLE.name
 
-    if not await check_user(update, context, send=False):
+    if not await check_user(update, context, "faq", send=False):
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
             text=Languages.msg("help_unregistered", update),
             reply_markup=ReplyKeyboardRemove(),
             parse_mode=PARSE_MODE,
         )
-        await check_user(update, context)
+        await check_user(update, context, "faq")
         return
 
     await context.bot.send_message(
@@ -235,7 +234,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def edit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not await check_admin(update, context):
+    if not await check_user(update, context, "faq_mod"):
         return
 
     context.user_data["edit"] = not context.user_data.get("edit", False)
@@ -277,11 +276,11 @@ async def delete_messages(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 async def faq(update: Update, context: ContextTypes.DEFAULT_TYPE, delete=False, page=1) -> None:
     context.user_data["state"] = State.FAQ.name
 
-    if not await check_user(update, context):
+    if not await check_user(update, context, "faq"):
         return
 
     if context.user_data.get("edit", False):
-        if not await check_admin(update, context, send=False):
+        if not await check_user(update, context, "faq_mod", send=False):
             context.user_data["edit"] = False
 
     search = context.user_data.get("search")
@@ -316,7 +315,7 @@ async def faq_page(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def faq_add(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not await check_admin(update, context, send=False):
+    if not await check_user(update, context, "faq_mod", send=False):
         context.user_data["edit"] = False
         await faq(update, context, delete=True)
         return
@@ -337,7 +336,7 @@ async def faq_add(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def faq_ans(update: Update, context: ContextTypes.DEFAULT_TYPE, question_id: Optional[ObjectId] = None) -> None:
-    if not await check_user(update, context):
+    if not await check_user(update, context, "faq"):
         return
 
     if not question_id:
@@ -394,7 +393,7 @@ async def faq_ans(update: Update, context: ContextTypes.DEFAULT_TYPE, question_i
 
 
 async def question_edit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not await check_admin(update, context, send=False):
+    if not await check_user(update, context, "faq_mod", send=False):
         context.user_data["edit"] = False
 
         await delete_messages(update, context)
@@ -419,7 +418,7 @@ async def question_edit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 
 async def question_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not await check_admin(update, context, send=False):
+    if not await check_user(update, context, "faq_mod", send=False):
         context.user_data["edit"] = False
 
         await delete_messages(update, context)
@@ -444,7 +443,7 @@ async def question_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 async def question_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await delete_messages(update, context)
 
-    if not await check_admin(update, context, send=False):
+    if not await check_user(update, context, "faq_mod", send=False):
         context.user_data["edit"] = False
         await faq(update, context)
         return
@@ -453,11 +452,11 @@ async def question_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 async def contacts(update: Update, context: ContextTypes.DEFAULT_TYPE, delete: bool = False, page: int = 1) -> None:
     context.user_data["state"] = State.CONTACTS.name
 
-    if not await check_user(update, context):
+    if not await check_user(update, context, "contacts"):
         return
 
     if context.user_data.get("edit", False):
-        if not await check_admin(update, context, send=False):
+        if not await check_user(update, context, "contacts_mod", send=False):
             context.user_data["edit"] = False
 
     search = context.user_data.get("search")
@@ -494,7 +493,7 @@ async def contacts_page(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 
 async def contacts_add(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not await check_admin(update, context, send=False):
+    if not await check_user(update, context, "contacts_mod", send=False):
         context.user_data["edit"] = False
         await contacts(update, context, delete=True)
         return
@@ -517,14 +516,14 @@ async def contacts_add(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 
 async def contact(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: Optional[ObjectId] = None) -> None:
-    if not await check_user(update, context):
+    if not await check_user(update, context, "contacts"):
         return
 
     if context.user_data.get("edit", False):
-        if not await check_admin(update, context, send=False):
+        if not await check_user(update, context, "contacts_mod", send=False):
             context.user_data["edit"] = False
 
-    if update.callback_query and update.callback_query.data.startswith("user_edit") and await check_admin(update, context, send=False):
+    if update.callback_query and update.callback_query.data.startswith("user_edit") and await check_user(update, context, "contacts_mod", send=False):
         context.user_data["edit"] = True
 
     if not user_id:
@@ -560,7 +559,7 @@ async def report(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         message_id=update.effective_message.message_id,
     )
 
-    if not await check_user(update, context):
+    if not await check_user(update, context, "contacts"):
         return
 
     user_id = ObjectId(update.callback_query.data.split(" ")[1])
@@ -591,7 +590,7 @@ async def report_feedback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         message_id=update.effective_message.message_id,
     )
 
-    if not await check_admin(update, context, send=False):
+    if not await check_user(update, context, "report", send=False):
         return
 
     report_obj = ReportsDb.get_report(ObjectId(update.callback_query.data.split(" ")[1]))
@@ -621,7 +620,7 @@ async def report_feedback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 
 async def edit_contact_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not await check_admin(update, context, send=False):
+    if not await check_user(update, context, "contacts_mod", send=False):
         context.user_data["edit"] = False
         await contact(update, context)
         return
@@ -655,7 +654,7 @@ async def edit_supervisor(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 async def supervisors(update: Update, context: ContextTypes.DEFAULT_TYPE, delete: bool = False, page: int = 1) -> None:
     context.user_data["state"] = State.EDIT_SUPERVISOR.name
 
-    if not await check_admin(update, context, send=False) or not context.user_data.get("edit", False):
+    if not await check_user(update, context, "contacts_mod", send=False) or not context.user_data.get("edit", False):
         context.user_data["edit"] = False
         await contact(update, context)
         return
@@ -693,7 +692,7 @@ async def supervisors_page(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
 
 async def supervisor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not await check_admin(update, context, send=False):
+    if not await check_user(update, context, "contacts_mod", send=False):
         context.user_data["edit"] = False
         await contact(update, context)
         return
@@ -709,7 +708,7 @@ async def supervisor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
 
 async def edit_job_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not await check_admin(update, context, send=False):
+    if not await check_user(update, context, "contacts_mod", send=False):
         context.user_data["edit"] = False
         await contact(update, context)
         return
@@ -735,7 +734,7 @@ async def edit_job_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 
 async def edit_unit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not await check_admin(update, context, send=False):
+    if not await check_user(update, context, "contacts_mod", send=False):
         context.user_data["edit"] = False
         await contact(update, context)
         return
@@ -762,7 +761,7 @@ async def edit_unit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def edit_place(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not await check_admin(update, context, send=False):
+    if not await check_user(update, context, "contacts_mod", send=False):
         context.user_data["edit"] = False
         await contact(update, context)
         return
@@ -789,7 +788,7 @@ async def edit_place(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
 
 async def edit_personal_phone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not await check_admin(update, context, send=False):
+    if not await check_user(update, context, "contacts_mod", send=False):
         context.user_data["edit"] = False
         await contact(update, context)
         return
@@ -816,7 +815,7 @@ async def edit_personal_phone(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 
 async def edit_work_phone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not await check_admin(update, context, send=False):
+    if not await check_user(update, context, "contacts_mod", send=False):
         context.user_data["edit"] = False
         await contact(update, context)
         return
@@ -843,7 +842,7 @@ async def edit_work_phone(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 
 async def edit_additional_number(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not await check_admin(update, context, send=False):
+    if not await check_user(update, context, "contacts_mod", send=False):
         context.user_data["edit"] = False
         await contact(update, context)
         return
@@ -870,7 +869,7 @@ async def edit_additional_number(update: Update, context: ContextTypes.DEFAULT_T
 
 
 async def edit_email(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not await check_admin(update, context, send=False):
+    if not await check_user(update, context, "contacts_mod", send=False):
         context.user_data["edit"] = False
         await contact(update, context)
         return
@@ -897,7 +896,7 @@ async def edit_email(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
 
 async def user_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not await check_admin(update, context, send=False):
+    if not await check_user(update, context, "contacts_mod", send=False):
         context.user_data["edit"] = False
         await contact(update, context)
         return
@@ -905,13 +904,20 @@ async def user_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     user_id = ObjectId(update.callback_query.data.split(" ")[1])
 
     user_obj = UsersDb.get_user(user_id)
-    UsersDb.edit_user(user_id, {"is_admin": not user_obj["is_admin"]})
+    if not user_obj:
+        await contacts(update, context, delete=True)
+        return
+
+    if any([access in user_obj["access"] for access in ADMIN_ACCESS]):
+        UsersDb.edit_user(user_id, {"access": USER_ACCESS})
+    else:
+        UsersDb.edit_user(user_id, {"access": USER_ACCESS + ADMIN_ACCESS})
 
     await contact(update, context)
 
 
 async def user_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not await check_admin(update, context, send=False):
+    if not await check_user(update, context, "contacts_mod", send=False):
         context.user_data["edit"] = False
         await contact(update, context)
         return
@@ -937,7 +943,7 @@ async def user_confirm_delete(update: Update, context: ContextTypes.DEFAULT_TYPE
     context.user_data["delete_message_ids"].append(update.effective_message.message_id)
     await delete_messages(update, context)
 
-    if not await check_admin(update, context, send=False):
+    if not await check_user(update, context, "contacts_mod", send=False):
         context.user_data["edit"] = False
         await contact(update, context)
         return
@@ -950,7 +956,7 @@ async def user_confirm_delete(update: Update, context: ContextTypes.DEFAULT_TYPE
 async def user_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await delete_messages(update, context)
 
-    if not await check_admin(update, context, send=False):
+    if not await check_user(update, context, "contacts_mod", send=False):
         context.user_data["edit"] = False
 
 
@@ -980,7 +986,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         context.user_data["search"] = None
         context.user_data["state"] = State.IDLE.name
 
-        if not await check_admin(update, context, send=False):
+        if not await check_user(update, context, "contacts_mod", send=False):
             context.user_data["state"] = State.CONTACTS.name
             await contacts(update, context)
         return
@@ -1042,7 +1048,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         if not report_obj:
             return
 
-        for admin in UsersDb.get_admins():
+        for admin in UsersDb.get_users_by_access("report"):
             try:
                 if admin["tg_id"] == 0:
                     continue
@@ -1101,13 +1107,19 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             reply_markup=keyboards.report_feedback(report_obj, update),
             parse_mode=PARSE_MODE,
         )
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=Languages.msg("feedback_sent", update),
+            reply_markup=ReplyKeyboardRemove(),
+            parse_mode=PARSE_MODE,
+        )
 
         ReportsDb.edit_report(report_id, {"is_closed": True})
 
         return
 
     effective_user = UsersDb.get_user_by_tg(update.effective_user.id)
-    if await check_admin(update, context, send=False):
+    if await check_user(update, context, "faq_mod", send=False) and await check_user(update, context, "contacts_mod", send=False):
         if context.user_data.get("state") in [State.ADD_QUESTION.name, State.EDIT_QUESTION.name]:
             question = update.message.text
             if question is None or question.strip() == "":
@@ -1338,10 +1350,10 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                                                 State.PERSONAL_PHONE.name, State.WORK_PHONE.name, State.ADDITIONAL_NUMBER.name, State.EMAIL.name]:
         if update.message.text == Languages.btn("cancel", update):
             context.user_data["user"] = None
-            if not await check_admin(update, context, send=False):
+            if not await check_user(update, context, "contacts_mod", send=False):
                 context.user_data["state"] = State.CONTACTS.name
                 await contacts(update, context)
-            elif not await check_user(update, context, send=False):
+            elif not await check_user(update, context, "contacts", send=False):
                 await context.bot.send_message(
                     chat_id=update.effective_chat.id,
                     text=Languages.msg("dont_understand", update),
@@ -1393,11 +1405,11 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             }
             for fld in fields:
                 if fields[fld] == "" and fld in REQUIRED_FIELDS:
-                    if not await check_admin(update, context, send=False):
+                    if not await check_user(update, context, "contacts_mod", send=False):
                         context.user_data["state"] = State.CONTACTS.name
                         await contacts(update, context)
                         return
-                    elif await check_user(update, context, send=False):
+                    elif await check_user(update, context, "contacts", send=False):
                         await context.bot.send_message(
                             chat_id=update.effective_chat.id,
                             text=Languages.msg("dont_understand", update),
@@ -1407,7 +1419,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
             context.user_data["user"].update({
                 "tg_id": update.effective_user.id,
-                "is_temp": True,
+                "access": [],
             })
             user_id = UsersDb.add_user(context.user_data["user"])
             user_obj = UsersDb.get_user(user_id)
@@ -1418,7 +1430,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                 parse_mode=PARSE_MODE,
             )
 
-            for admin in UsersDb.get_admins():
+            for admin in UsersDb.get_users_by_access("request"):
                 try:
                     if admin["tg_id"] == 0:
                         continue

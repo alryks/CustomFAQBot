@@ -68,8 +68,8 @@ class UsersDb:
         cls.users.delete_one({"_id": user_id})
 
     @classmethod
-    def get_admins(cls) -> [dict]:
-        return cls.users.find({"is_admin": True})
+    def get_users_by_access(cls, access) -> [dict]:
+        return list(cls.users.find({"access": access}))
 
 
 class FaqDb:

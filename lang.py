@@ -121,6 +121,10 @@ class Languages:
             "en": "Describe your feedback in text form:",
             "ru": "Напишите сообщение для обратной связи в текстовой форме:"
         },
+        "feedback_sent": {
+            "en": "Feedback has been sent!",
+            "ru": "Обратная связь отправлена!"
+        },
         "report_closed": {
             "en": "The report has been closed!",
             "ru": "Запрос уже закрыт!"

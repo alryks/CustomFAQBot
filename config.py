@@ -24,10 +24,12 @@ FIELDS = {
     "additional_number": 0,
     "email": "",
     "tg_id": 0,
-    "is_admin": False,
-    "is_temp": False
+    "access": []
 }
 REQUIRED_FIELDS = ["name"]
+
+USER_ACCESS = ["faq", "contacts"]
+ADMIN_ACCESS = ["faq_mod", "contacts_mod", "report", "request"]
 
 # Database
 DB_USER = config["DB_USER"]
