@@ -1417,7 +1417,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                         )
                         return
 
-            if await check_user(update, context, "contacts_mod", send=False):
+            if not await check_user(update, context, "contacts_mod", send=False):
                 context.user_data["user"].update({
                     "tg_id": update.effective_user.id,
                     "access": [],
