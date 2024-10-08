@@ -986,7 +986,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         context.user_data["search"] = None
         context.user_data["state"] = State.IDLE.name
 
-        if not await check_user(update, context, "contacts_mod", send=False):
+        if await check_user(update, context, "contacts_mod", send=False):
             context.user_data["state"] = State.CONTACTS.name
             await contacts(update, context)
         return
@@ -1405,7 +1405,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             }
             for fld in fields:
                 if fields[fld] == "" and fld in REQUIRED_FIELDS:
-                    if not await check_user(update, context, "contacts_mod", send=False):
+                    if await check_user(update, context, "contacts_mod", send=False):
                         context.user_data["state"] = State.CONTACTS.name
                         await contacts(update, context)
                         return
