@@ -26,7 +26,7 @@ FIELDS = {
     "tg_id": 0,
     "access": []
 }
-REQUIRED_FIELDS = ["name"]
+REQUIRED_FIELDS = ["name", "personal_phone"]
 
 USER_ACCESS = ["faq", "contacts"]
 ADMIN_ACCESS = ["faq_mod", "contacts_mod", "report", "request"]
