@@ -1350,10 +1350,10 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                                                 State.PERSONAL_PHONE.name, State.WORK_PHONE.name, State.ADDITIONAL_NUMBER.name, State.EMAIL.name]:
         if update.message.text == Languages.btn("cancel", update):
             context.user_data["user"] = None
-            if not await check_user(update, context, "contacts_mod", send=False):
+            if await check_user(update, context, "contacts_mod", send=False):
                 context.user_data["state"] = State.CONTACTS.name
                 await contacts(update, context)
-            elif not await check_user(update, context, "contacts", send=False):
+            elif await check_user(update, context, "contacts", send=False):
                 await context.bot.send_message(
                     chat_id=update.effective_chat.id,
                     text=Languages.msg("dont_understand", update),
