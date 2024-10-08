@@ -1417,12 +1417,18 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                         )
                         return
 
-            context.user_data["user"].update({
-                "tg_id": update.effective_user.id,
-                "access": [],
-            })
+            if await check_user(update, context, "contacts_mod", send=False):
+                context.user_data["user"].update({
+                    "tg_id": update.effective_user.id,
+                    "access": [],
+                })
+
             user_id = UsersDb.add_user(context.user_data["user"])
             user_obj = UsersDb.get_user(user_id)
+
+            if await check_user(update, context, "contacts_mod", send=False):
+                await contact(update, context, user_id=user_id)
+                return 
 
             await context.bot.send_message(
                 chat_id=update.effective_chat.id,
