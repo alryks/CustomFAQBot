@@ -186,7 +186,8 @@ def filter_faq(faq: list, search: str) -> list:
 
 
 def filter_contacts(users: list, required_fields: list) -> list:
-    return [user for user in users if all(user.get(field, "") != "" for field in required_fields)]
+    # return [user for user in users if all(user.get(field, "") != "" for field in required_fields)]
+    return [user for user in users if user.get(required_fields[0], "") != ""]
 
 
 def search_contacts(users: list, search: str) -> list:

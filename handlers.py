@@ -1428,7 +1428,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
             if await check_user(update, context, "contacts_mod", send=False):
                 await contact(update, context, user_id=user_id)
-                return 
+                return
 
             await context.bot.send_message(
                 chat_id=update.effective_chat.id,
