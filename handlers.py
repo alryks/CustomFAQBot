@@ -151,7 +151,7 @@ async def similar(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: O
 
     if not user_id:
         user_id = ObjectId(update.callback_query.data.split(" ")[2])
-    similar_users = UsersDb.get_similar_users(user_id)
+    similar_users = UsersDb.get_similar_users(user_id, REQUIRED_FIELDS[0])
     if not similar_users:
         return await contact(update, context, user_id=user_id)
 
@@ -1381,7 +1381,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         else:
             if context.user_data.get("user") is None:
                 context.user_data["user"] = FIELDS.copy()
-            context.user_data["user"][field] = update.message.text
+            context.user_data["user"][field] = parse_phone(update.message.text) if context.user_data.get("state", None) in [State.PERSONAL_PHONE.name, State.WORK_PHONE.name] else update.message.text
             start_search = False
             next_field: Optional[str] = None
             for fld in REQUIRED_FIELDS:

@@ -43,14 +43,13 @@ class UsersDb:
         return cls.users.find_one({"tg_id": tg_id})
 
     @classmethod
-    def get_similar_users(cls, user_id: ObjectId) -> [dict]:
+    def get_similar_users(cls, user_id: ObjectId, field) -> [dict]:
         user = cls.get_user(user_id)
         if user is None:
             return []
         query = {}
-        for key, value in user.items():
-            if isinstance(value, str) and value != "":
-                query[key] = {"$regex": value, "$options": "i"}
+        if isinstance(user[field], str) and user[field] != "":
+            query[field] = {"$regex": user[field].replace("ё", "[её]").replace("Ё", "[её]"), "$options": "i"}
         query["tg_id"] = {"$eq": 0}
         return list(cls.users.find(query))
 
