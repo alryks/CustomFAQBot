@@ -43,11 +43,11 @@ class UsersDb:
         return cls.users.find_one({"tg_id": tg_id})
 
     @classmethod
-    def get_similar_users(cls, user_id: ObjectId, field) -> [dict]:
+    def get_similar_users(cls, user_id: ObjectId, field: str) -> [dict]:
         user = cls.get_user(user_id)
         if user is None:
             return []
-        if not isinstance(user[field], str) or user[field] != "":
+        if not isinstance(user[field], str) or user[field] == "":
             return []
 
         value = user[field].replace("ё", "[её]").replace("Ё", "[её]")
