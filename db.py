@@ -47,11 +47,27 @@ class UsersDb:
         user = cls.get_user(user_id)
         if user is None:
             return []
-        query = {}
-        if isinstance(user[field], str) and user[field] != "":
-            query[field] = {"$regex": user[field].replace("ё", "[её]").replace("Ё", "[её]"), "$options": "i"}
-        query["tg_id"] = {"$eq": 0}
-        return list(cls.users.find(query))
+        if not isinstance(user[field], str) or user[field] != "":
+            return []
+
+        value = user[field].replace("ё", "[её]").replace("Ё", "[её]")
+        query = {
+            field: {"$regex": value, "$options": "i"},
+            "tg_id": {"$eq": 0}
+        }
+
+        similar_users = list(cls.users.find(query))
+        if not similar_users:
+            value = value.split()[0]
+            query = {
+                field: {"$regex": value, "$options": "i"},
+                "tg_id": {"$eq": 0}
+            }
+            similar_users = list(cls.users.find(query))
+
+        return similar_users
+
+
 
     @classmethod
     def add_user(cls, data: dict) -> ObjectId:

@@ -39,7 +39,7 @@ class Languages:
         },
         "help": {
             "en": "Welcome! I'm your company navigator. I can help you find the right employee using the /contacts command, as well as answer frequently asked questions using the /faq command.",
-            "ru": "Приветствую! Я твой навигатор по компании. Я могу помочь тебе найти нужного сотрудника с помощью команды /contacts, а также ответить на часто задаваемые вопросы, используя команды /faq."
+            "ru": "Приветствую! Я твой навигатор по компании. Я могу помочь тебе найти нужного сотрудника с помощью команды /contacts, а также ответить на часто задаваемые вопросы, используя команду /faq."
         },
         "help_unregistered": {
             "en": "Welcome! I'm your company navigator. I can help you find the right employee, as well as answer frequently asked questions.",

@@ -225,9 +225,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await check_user(update, context, "faq")
         return
 
-    await context.bot.send_message(
+    await context.bot.send_video(
         chat_id=update.effective_chat.id,
-        text=Languages.msg("help", update),
+        video="video.mp4",
+        caption=Languages.msg("help", update),
         reply_markup=ReplyKeyboardRemove(),
         parse_mode=PARSE_MODE,
     )
@@ -1453,7 +1454,14 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             return
 
     context.user_data["search"] = update.message.text if update.message.text else ""
-    if context.user_data["state"] == State.FAQ.name:
+    if not context.user_data.get("state"):
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=Languages.msg("dont_understand", update),
+            reply_markup=ReplyKeyboardRemove(),
+            parse_mode=PARSE_MODE,
+        )
+    elif context.user_data["state"] == State.FAQ.name:
         await faq(update, context)
     elif context.user_data["state"] == State.CONTACTS.name:
         await contacts(update, context)
