@@ -227,7 +227,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     await context.bot.send_video(
         chat_id=update.effective_chat.id,
-        video="video.mp4",
+        video=open("video.mp4", "rb"),
+        supports_streaming=True,
         caption=Languages.msg("help", update),
         reply_markup=ReplyKeyboardRemove(),
         parse_mode=PARSE_MODE,
@@ -693,6 +694,7 @@ async def supervisors_page(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
 
 async def supervisor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    context.user_data["state"] = State.CONTACTS.name
     if not await check_user(update, context, "contacts_mod", send=False):
         context.user_data["edit"] = False
         await contact(update, context)
