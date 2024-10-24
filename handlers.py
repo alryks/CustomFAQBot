@@ -5,7 +5,7 @@ from telegram.ext import ContextTypes
 
 from bson import ObjectId
 
-from config import PARSE_MODE, PRIVATE, FIELDS, REQUIRED_FIELDS, USER_ACCESS, ADMIN_ACCESS
+from config import PARSE_MODE, PRIVATE, FIELDS, REQUIRED_FIELDS, USER_ACCESS, ADMIN_ACCESS, HELP_MESSAGE_CHAT, HELP_MESSAGE
 
 import keyboards
 
@@ -225,14 +225,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await check_user(update, context, "faq")
         return
 
-    await context.bot.send_video(
-        chat_id=update.effective_chat.id,
-        video=open("video.mp4", "rb"),
-        supports_streaming=True,
-        caption=Languages.msg("help", update),
-        reply_markup=ReplyKeyboardRemove(),
-        parse_mode=PARSE_MODE,
-    )
+    if not HELP_MESSAGE or not HELP_MESSAGE_CHAT:
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=Languages.msg("help", update),
+            reply_markup=ReplyKeyboardRemove(),
+            parse_mode=PARSE_MODE,
+        )
+    else:
+        await context.bot.copy_message(
+            chat_id=update.effective_chat.id,
+            from_chat_id=HELP_MESSAGE_CHAT,
+            message_id=HELP_MESSAGE
+        )
 
 
 async def edit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
