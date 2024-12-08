@@ -182,7 +182,23 @@ async def user_info(user_obj: dict, update: Update, bot: Bot) -> str:
 
 
 def filter_faq(faq: list, search: str) -> list:
-    return [question for question in faq if search.lower() in question["question"].lower()]
+    if not search:
+        return faq
+    search = search.lower()
+    filtered = []
+    for question in faq:
+        # Поиск по тексту вопроса
+        if search in question["question"].lower():
+            filtered.append(question)
+            continue
+            
+        # Поиск по тексту ответов
+        for answer in question["answers"]:
+            if "text" in answer and search in answer["text"].lower():
+                filtered.append(question)
+                break
+                
+    return filtered
 
 
 def filter_contacts(users: list, required_fields: list) -> list:

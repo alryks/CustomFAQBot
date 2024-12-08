@@ -1209,7 +1209,13 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             chat_id = update.effective_chat.id
             message_id = update.effective_message.message_id
 
-            context.user_data["question"]["answers"].append({"chat_id": chat_id, "message_id": message_id})
+            # Сохраняем текст сообщения или подпись, если они есть
+            message_content = update.effective_message.text or update.effective_message.caption or ""
+            context.user_data["question"]["answers"].append({
+                "chat_id": chat_id, 
+                "message_id": message_id,
+                "text": message_content
+            })
 
             message = await context.bot.send_message(
                 chat_id=update.effective_chat.id,
