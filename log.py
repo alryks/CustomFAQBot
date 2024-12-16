@@ -60,7 +60,7 @@ def log_action(user: User, action: str, *data):
         user_place = user_obj["place"]
         user_personal_phone = user_obj["personal_phone"]
         user_work_phone = user_obj["work_phone"]
-        user_additional_number = user_obj["additional_number"]
+        user_additional_number = user_obj["additional_number"] if user_obj["additional_number"] else ""
         user_email = user_obj["email"]
     else:
         user_name = user.full_name
