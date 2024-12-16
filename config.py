@@ -4,6 +4,10 @@ import pymongo
 
 config = dotenv_values(".env")
 
+# Logging
+SPREADSHEET_ID = config["SPREADSHEET_ID"]
+SPREADSHEET_RANGE = config["SPREADSHEET_RANGE"]
+
 # Telegram Bot
 BOT_TOKEN = config["BOT_TOKEN"]
 PARSE_MODE = "HTML"

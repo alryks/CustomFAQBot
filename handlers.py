@@ -7,6 +7,8 @@ from bson import ObjectId
 
 from config import PARSE_MODE, PRIVATE, FIELDS, REQUIRED_FIELDS, USER_ACCESS, ADMIN_ACCESS, HELP_MESSAGE_CHAT, HELP_MESSAGE
 
+from log import log_action
+
 import keyboards
 
 from db import ReportsDb, UsersDb, FaqDb
@@ -52,6 +54,8 @@ async def check_user(update: Update, context: ContextTypes.DEFAULT_TYPE, access:
             parse_mode=PARSE_MODE,
         )
         return False
+
+    log_action(update.effective_user, "unregistered", access)
 
     if not REQUIRED_FIELDS:
         user = FIELDS.copy()
@@ -127,6 +131,8 @@ async def accept(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             text=Languages.msg("help", update),
             parse_mode=PARSE_MODE,
         )
+
+        log_action(update.effective_user, "accept", user_obj["tg_id"])
 
         context.user_data["edit"] = True
 
@@ -210,6 +216,8 @@ async def deny(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
         UsersDb.delete_user(user_obj["_id"])
 
+        log_action(update.effective_user, "deny", user_obj["tg_id"])
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     context.user_data["search"] = None
@@ -238,6 +246,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             from_chat_id=HELP_MESSAGE_CHAT,
             message_id=HELP_MESSAGE
         )
+    
+    log_action(update.effective_user, "start", "")
 
 
 async def edit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -293,6 +303,8 @@ async def faq(update: Update, context: ContextTypes.DEFAULT_TYPE, delete=False, 
     search = context.user_data.get("search")
     if search is None:
         search = ""
+
+    log_action(update.effective_user, "faq", search, page)
 
     filtered_faq = filter_faq(FaqDb.get_faq(), search)
 
@@ -358,6 +370,8 @@ async def faq_ans(update: Update, context: ContextTypes.DEFAULT_TYPE, question_i
         await faq(update, context)
         return
     answers = question["answers"]
+
+    log_action(update.effective_user, "faq_ans", question["question"])
 
     await delete_messages(update, context)
 
@@ -470,6 +484,8 @@ async def contacts(update: Update, context: ContextTypes.DEFAULT_TYPE, delete: b
     if not search:
         search = ""
 
+    log_action(update.effective_user, "contacts", search, page)
+
     searched_contacts = search_contacts(UsersDb.get_users(), search)
     if not context.user_data.get("edit", False):
         searched_contacts = filter_contacts(searched_contacts, REQUIRED_FIELDS)
@@ -544,6 +560,8 @@ async def contact(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: O
         await contacts(update, context)
         return
 
+    log_action(update.effective_user, "contact", user_obj["name"])
+
     await delete_messages(update, context)
 
     message = await context.bot.send_message(
@@ -574,6 +592,8 @@ async def report(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not user_obj:
         await contacts(update, context)
         return
+
+    log_action(update.effective_user, "report", user_obj["name"])
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
@@ -1030,7 +1050,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             )
             await contact(update, context, user_id=user_id)
         else:
-            await contacts(update, context)
+            return await contacts(update, context)
 
         if update.message.text == Languages.btn("cancel", update):
             return
@@ -1042,6 +1062,8 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         effective_user = UsersDb.get_user_by_tg(update.effective_user.id)
         if not effective_user:
             return
+
+        log_action(update.effective_user, "report_text", user_obj["name"], update.message.text)
 
         report_id = ReportsDb.add_report({
             "from": effective_user["_id"],
@@ -1395,6 +1417,9 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         else:
             if context.user_data.get("user") is None:
                 context.user_data["user"] = FIELDS.copy()
+            
+            log_action(update.effective_user, "register", field, update.message.text)
+
             context.user_data["user"][field] = parse_phone(update.message.text) if context.user_data.get("state", None) in [State.PERSONAL_PHONE.name, State.WORK_PHONE.name] else update.message.text
             start_search = False
             next_field: Optional[str] = None
