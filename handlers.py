@@ -247,7 +247,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             message_id=HELP_MESSAGE
         )
     
-    log_action(update.effective_user, "start", "")
+    log_action(update.effective_user, "start")
 
 
 async def edit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
