@@ -109,10 +109,11 @@ async def check_user(update: Update, context: ContextTypes.DEFAULT_TYPE, access:
 
 
 async def accept(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await context.bot.delete_message(
-        chat_id=update.effective_chat.id,
-        message_id=update.effective_message.message_id
-    )
+    if not context.user_data.get("delete_message_ids"):
+        context.user_data["delete_message_ids"] = []
+    context.user_data["delete_message_ids"].append(update.effective_message.message_id)
+    await delete_messages(update, context)
+    
     if not await check_user(update, context, "request"):
         context.user_data["edit"] = False
         return
@@ -142,18 +143,18 @@ async def accept(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def similar(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: Optional[ObjectId] = None, delete: bool = False, page: int = 1) -> None:
     if not await check_user(update, context, "contacts_mod", send=False):
         context.user_data["edit"] = False
-        await context.bot.delete_message(
-            chat_id=update.effective_chat.id,
-            message_id=update.effective_message.message_id
-        )
+        if not context.user_data.get("delete_message_ids"):
+            context.user_data["delete_message_ids"] = []
+        context.user_data["delete_message_ids"].append(update.effective_message.message_id)
+        await delete_messages(update, context)
         await contacts(update, context)
         return
 
     if delete:
-        await context.bot.delete_message(
-            chat_id=update.effective_chat.id,
-            message_id=update.effective_message.message_id
-        )
+        if not context.user_data.get("delete_message_ids"):
+            context.user_data["delete_message_ids"] = []
+        context.user_data["delete_message_ids"].append(update.effective_message.message_id)
+        await delete_messages(update, context)
 
     if not user_id:
         user_id = ObjectId(update.callback_query.data.split(" ")[2])
@@ -179,10 +180,12 @@ async def similar_page(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 async def similar_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not await check_user(update, context, "contacts_mod", send=False):
         context.user_data["edit"] = False
-        await context.bot.delete_message(
-            chat_id=update.effective_chat.id,
-            message_id=update.effective_message.message_id
-        )
+
+        if not context.user_data.get("delete_message_ids"):
+            context.user_data["delete_message_ids"] = []
+        context.user_data["delete_message_ids"].append(update.effective_message.message_id)
+        await delete_messages(update, context)
+
         await contacts(update, context)
         return
 
@@ -198,10 +201,11 @@ async def similar_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 
 async def deny(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await context.bot.delete_message(
-        chat_id=update.effective_chat.id,
-        message_id=update.effective_message.message_id
-    )
+    if not context.user_data.get("delete_message_ids"):
+        context.user_data["delete_message_ids"] = []
+    context.user_data["delete_message_ids"].append(update.effective_message.message_id)
+    await delete_messages(update, context)
+    
     if not await check_user(update, context, "request"):
         context.user_data["edit"] = False
         return
@@ -269,10 +273,10 @@ async def edit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def cancel_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await context.bot.delete_message(
-        chat_id=update.effective_chat.id,
-        message_id=update.effective_message.message_id
-    )
+    if not context.user_data.get("delete_message_ids"):
+        context.user_data["delete_message_ids"] = []
+    context.user_data["delete_message_ids"].append(update.effective_message.message_id)
+    await delete_messages(update, context)
 
 
 async def delete_messages(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -311,10 +315,10 @@ async def faq(update: Update, context: ContextTypes.DEFAULT_TYPE, delete=False, 
     text = create_faq(filtered_faq, update, page)
 
     if delete:
-        await context.bot.delete_message(
-            chat_id=update.effective_chat.id,
-            message_id=update.effective_message.message_id
-        )
+        if not context.user_data.get("delete_message_ids"):
+            context.user_data["delete_message_ids"] = []
+        context.user_data["delete_message_ids"].append(update.effective_message.message_id)
+        await delete_messages(update, context)
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
@@ -363,10 +367,10 @@ async def faq_ans(update: Update, context: ContextTypes.DEFAULT_TYPE, question_i
 
     question = FaqDb.get_question(question_id)
     if not question:
-        await context.bot.delete_message(
-            chat_id=update.effective_chat.id,
-            message_id=update.callback_query.message.message_id,
-        )
+        if not context.user_data.get("delete_message_ids"):
+            context.user_data["delete_message_ids"] = []
+        context.user_data["delete_message_ids"].append(update.callback_query.message.message_id)
+        await delete_messages(update, context)
         await faq(update, context)
         return
     answers = question["answers"]
@@ -416,19 +420,17 @@ async def faq_ans(update: Update, context: ContextTypes.DEFAULT_TYPE, question_i
 async def question_edit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not await check_user(update, context, "faq_mod", send=False):
         context.user_data["edit"] = False
-
         await delete_messages(update, context)
-
         await faq(update, context)
         return
 
     context.user_data["question_id"] = ObjectId(update.callback_query.data.split(" ")[1])
     context.user_data["state"] = State.EDIT_QUESTION.name
 
-    await context.bot.delete_message(
-        chat_id=update.effective_chat.id,
-        message_id=update.effective_message.message_id
-    )
+    if not context.user_data.get("delete_message_ids"):
+        context.user_data["delete_message_ids"] = []
+    context.user_data["delete_message_ids"].append(update.effective_message.message_id)
+    await delete_messages(update, context)
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
@@ -441,9 +443,7 @@ async def question_edit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 async def question_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not await check_user(update, context, "faq_mod", send=False):
         context.user_data["edit"] = False
-
         await delete_messages(update, context)
-
         await faq(update, context)
         return
 
@@ -493,10 +493,10 @@ async def contacts(update: Update, context: ContextTypes.DEFAULT_TYPE, delete: b
     text = await create_contacts(searched_contacts, context.bot, update, page)
 
     if delete:
-        await context.bot.delete_message(
-            chat_id=update.effective_chat.id,
-            message_id=update.effective_message.message_id
-        )
+        if not context.user_data.get("delete_message_ids"):
+            context.user_data["delete_message_ids"] = []
+        context.user_data["delete_message_ids"].append(update.effective_message.message_id)
+        await delete_messages(update, context)
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
@@ -553,10 +553,10 @@ async def contact(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: O
         user_id = ObjectId(update.callback_query.data.split(" ")[1])
     user_obj = UsersDb.get_user(user_id)
     if not user_obj:
-        await context.bot.delete_message(
-            chat_id=update.effective_chat.id,
-            message_id=update.effective_message.message_id,
-        )
+        if not context.user_data.get("delete_message_ids"):
+            context.user_data["delete_message_ids"] = []
+        context.user_data["delete_message_ids"].append(update.effective_message.message_id)
+        await delete_messages(update, context)
         await contacts(update, context)
         return
 
@@ -579,10 +579,10 @@ async def contact(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: O
 
 
 async def report(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await context.bot.delete_message(
-        chat_id=update.effective_chat.id,
-        message_id=update.effective_message.message_id,
-    )
+    if not context.user_data.get("delete_message_ids"):
+        context.user_data["delete_message_ids"] = []
+    context.user_data["delete_message_ids"].append(update.effective_message.message_id)
+    await delete_messages(update, context)
 
     if not await check_user(update, context, "contacts"):
         return
@@ -612,10 +612,10 @@ async def report(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def report_feedback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await context.bot.delete_message(
-        chat_id=update.effective_chat.id,
-        message_id=update.effective_message.message_id,
-    )
+    if not context.user_data.get("delete_message_ids"):
+        context.user_data["delete_message_ids"] = []
+    context.user_data["delete_message_ids"].append(update.effective_message.message_id)
+    await delete_messages(update, context)
 
     if not await check_user(update, context, "report", send=False):
         return
@@ -657,10 +657,11 @@ async def edit_contact_name(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
     is_required = "name" in REQUIRED_FIELDS
 
-    await context.bot.delete_message(
-        chat_id=update.effective_chat.id,
-        message_id=update.effective_message.message_id
-    )
+    if not context.user_data.get("delete_message_ids"):
+        context.user_data["delete_message_ids"] = []
+    context.user_data["delete_message_ids"].append(update.effective_message.message_id)
+    await delete_messages(update, context)
+
     message = await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=Languages.msg("send_name", update),
@@ -698,10 +699,10 @@ async def supervisors(update: Update, context: ContextTypes.DEFAULT_TYPE, delete
     text = await create_contacts(searched_contacts, context.bot, update, page, which="supervisors")
 
     if delete:
-        await context.bot.delete_message(
-            chat_id=update.effective_chat.id,
-            message_id=update.effective_message.message_id
-        )
+        if not context.user_data.get("delete_message_ids"):
+            context.user_data["delete_message_ids"] = []
+        context.user_data["delete_message_ids"].append(update.effective_message.message_id)
+        await delete_messages(update, context)
 
     message = await context.bot.send_message(
         chat_id=update.effective_chat.id,
@@ -746,10 +747,11 @@ async def edit_job_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     is_required = "job_title" in REQUIRED_FIELDS
 
-    await context.bot.delete_message(
-        chat_id=update.effective_chat.id,
-        message_id=update.effective_message.message_id
-    )
+    if not context.user_data.get("delete_message_ids"):
+        context.user_data["delete_message_ids"] = []
+    context.user_data["delete_message_ids"].append(update.effective_message.message_id)
+    await delete_messages(update, context)
+
     message = await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=Languages.msg("send_job_title", update),
@@ -773,10 +775,11 @@ async def edit_unit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     is_required = "unit" in REQUIRED_FIELDS
 
-    await context.bot.delete_message(
-        chat_id=update.effective_chat.id,
-        message_id=update.effective_message.message_id
-    )
+    if not context.user_data.get("delete_message_ids"):
+        context.user_data["delete_message_ids"] = []
+    context.user_data["delete_message_ids"].append(update.effective_message.message_id)
+    await delete_messages(update, context)
+
     message = await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=Languages.msg("send_unit", update),
@@ -800,10 +803,11 @@ async def edit_place(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
     is_required = "place" in REQUIRED_FIELDS
 
-    await context.bot.delete_message(
-        chat_id=update.effective_chat.id,
-        message_id=update.effective_message.message_id
-    )
+    if not context.user_data.get("delete_message_ids"):
+        context.user_data["delete_message_ids"] = []
+    context.user_data["delete_message_ids"].append(update.effective_message.message_id)
+    await delete_messages(update, context)
+
     message = await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=Languages.msg("send_place", update),
@@ -827,10 +831,11 @@ async def edit_personal_phone(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     is_required = "personal_phone" in REQUIRED_FIELDS
 
-    await context.bot.delete_message(
-        chat_id=update.effective_chat.id,
-        message_id=update.effective_message.message_id
-    )
+    if not context.user_data.get("delete_message_ids"):
+        context.user_data["delete_message_ids"] = []
+    context.user_data["delete_message_ids"].append(update.effective_message.message_id)
+    await delete_messages(update, context)
+
     message = await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=Languages.msg("send_personal_phone", update),
@@ -854,10 +859,11 @@ async def edit_work_phone(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     is_required = "work_phone" in REQUIRED_FIELDS
 
-    await context.bot.delete_message(
-        chat_id=update.effective_chat.id,
-        message_id=update.effective_message.message_id
-    )
+    if not context.user_data.get("delete_message_ids"):
+        context.user_data["delete_message_ids"] = []
+    context.user_data["delete_message_ids"].append(update.effective_message.message_id)
+    await delete_messages(update, context)
+
     message = await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=Languages.msg("send_work_phone", update),
@@ -881,10 +887,11 @@ async def edit_additional_number(update: Update, context: ContextTypes.DEFAULT_T
 
     is_required = "additional_number" in REQUIRED_FIELDS
 
-    await context.bot.delete_message(
-        chat_id=update.effective_chat.id,
-        message_id=update.effective_message.message_id
-    )
+    if not context.user_data.get("delete_message_ids"):
+        context.user_data["delete_message_ids"] = []
+    context.user_data["delete_message_ids"].append(update.effective_message.message_id)
+    await delete_messages(update, context)
+
     message = await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=Languages.msg("send_additional_number", update),
@@ -908,10 +915,11 @@ async def edit_email(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
     is_required = "email" in REQUIRED_FIELDS
 
-    await context.bot.delete_message(
-        chat_id=update.effective_chat.id,
-        message_id=update.effective_message.message_id
-    )
+    if not context.user_data.get("delete_message_ids"):
+        context.user_data["delete_message_ids"] = []
+    context.user_data["delete_message_ids"].append(update.effective_message.message_id)
+    await delete_messages(update, context)
+
     message = await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=Languages.msg("send_email", update),
