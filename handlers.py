@@ -113,16 +113,12 @@ async def accept(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         context.user_data["delete_message_ids"] = []
     context.user_data["delete_message_ids"].append(update.effective_message.message_id)
     await delete_messages(update, context)
-
-    print(1)
     
     if not await check_user(update, context, "request"):
-        print(2)
         context.user_data["edit"] = False
         return
 
     user_obj = UsersDb.get_user(ObjectId(update.callback_query.data.split(" ")[1]))
-    print(user_obj)
 
     if user_obj and not user_obj["access"]:
         UsersDb.edit_user(user_obj["_id"], {"access": USER_ACCESS})
