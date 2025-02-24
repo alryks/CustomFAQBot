@@ -19,8 +19,8 @@ class Languages:
             "ru": "Информация о работе с ботом"
         },
         "faq": {
-            "en": "Frequently Asked Questions",
-            "ru": "Часто задаваемые вопросы"
+            "en": "Questions, Regulations, Standards",
+            "ru": "Вопросы, Регламенты, Стандарты"
         },
         "contacts": {
             "en": "Employee contacts",
