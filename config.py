@@ -13,6 +13,9 @@ BOT_TOKEN = config["BOT_TOKEN"]
 PARSE_MODE = "HTML"
 PRIVATE = True
 
+# Friend API
+FRIEND_API = "localhost:8000"
+
 HELP_MESSAGE = None
 HELP_MESSAGE_CHAT = None
 

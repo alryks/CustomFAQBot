@@ -1,3 +1,4 @@
+# main.py
 import asyncio
 
 from telegram.ext import MessageHandler, CommandHandler, CallbackQueryHandler
@@ -8,7 +9,7 @@ from misc import callback
 from config import BOT_TOKEN
 from bot import Bot
 
-from handlers import start, edit, cancel_command, message_handler, \
+from handlers import start, friend_command, edit, cancel_command, message_handler, \
     accept, deny, \
     \
     faq_command, faq_page, \
@@ -26,7 +27,9 @@ from handlers import start, edit, cancel_command, message_handler, \
     \
     edit_contact_name, edit_job_title, edit_unit, edit_place, \
     edit_personal_phone, edit_work_phone, edit_additional_number, edit_email, \
-    user_admin, user_delete, user_confirm_delete, user_cancel
+    user_admin, user_delete, user_confirm_delete, user_cancel, \
+    friend_add, friend_select_job, friend_job_selected, friend_save_application, friend_list, \
+    friend_application_selected, friend_cancel, friend_edit
 
 
 async def main():
@@ -34,6 +37,7 @@ async def main():
 
     BOT.handlers = [
         CommandHandler(["start", "help"], start),
+        CommandHandler("friend", friend_command),
         CommandHandler("edit", edit),
         CallbackQueryHandler(cancel_command, "cancel"),
 
@@ -79,6 +83,20 @@ async def main():
 
         CallbackQueryHandler(contact, "^user"),
 
+        # Friend handlers
+        CallbackQueryHandler(friend_add, "^friend_add"),
+        CallbackQueryHandler(friend_select_job, "^friend_jobs"),
+        CallbackQueryHandler(friend_job_selected, "^friend_job"),
+        
+        CallbackQueryHandler(friend_save_application, "^friend_save"),
+        CallbackQueryHandler(friend_list, "^friend_list"),
+        CallbackQueryHandler(friend_list, "^friend_apps_page"),
+        CallbackQueryHandler(friend_application_selected, "^friend_app"),
+        CallbackQueryHandler(friend_cancel, "^friend_cancel"),
+        CallbackQueryHandler(friend_edit, "^friend_edit"),
+
+
+
         CallbackQueryHandler(callback, "^callback"),
         MessageHandler(filters.ALL, message_handler),
     ]
@@ -87,6 +105,7 @@ async def main():
         "help",
         "faq",
         "contacts",
+        "friend",
     ]
 
     await BOT.run()

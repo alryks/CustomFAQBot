@@ -1,7 +1,7 @@
 import pymongo
 from bson import ObjectId
 
-from typing import Optional
+from typing import Optional, List
 
 from config import DB
 
@@ -31,7 +31,7 @@ class UsersDb:
     users: pymongo.collection.Collection = DB.users
 
     @classmethod
-    def get_users(cls) -> [dict]:
+    def get_users(cls) -> List[dict]:
         return list(cls.users.find())
 
     @classmethod
@@ -43,7 +43,7 @@ class UsersDb:
         return cls.users.find_one({"tg_id": tg_id})
 
     @classmethod
-    def get_similar_users(cls, user_id: ObjectId, field: str) -> [dict]:
+    def get_similar_users(cls, user_id: ObjectId, field: str) -> List[dict]:
         user = cls.get_user(user_id)
         if user is None:
             return []
@@ -66,9 +66,7 @@ class UsersDb:
             similar_users = list(cls.users.find(query))
 
         return similar_users
-
-
-
+        
     @classmethod
     def add_user(cls, data: dict) -> ObjectId:
         insert_result = cls.users.insert_one(data)
@@ -83,15 +81,14 @@ class UsersDb:
         cls.users.delete_one({"_id": user_id})
 
     @classmethod
-    def get_users_by_access(cls, access) -> [dict]:
+    def get_users_by_access(cls, access) -> List[dict]:
         return list(cls.users.find({"access": access}))
-
 
 class FaqDb:
     faq: pymongo.collection.Collection = DB.faq
 
     @classmethod
-    def get_faq(cls) -> [dict]:
+    def get_faq(cls) -> List[dict]:
         return list(cls.faq.find())
 
     @classmethod

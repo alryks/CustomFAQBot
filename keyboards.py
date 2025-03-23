@@ -149,3 +149,95 @@ def accept_deny(user_id: Union[int, ObjectId]) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("✅", callback_data=f"accept {user_id}"), InlineKeyboardButton("❌", callback_data=f"deny {user_id}")],
     ])
+
+
+def friend_main(update: Update) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(Languages.kbd("add_friend", update), callback_data="friend_add")],
+        [InlineKeyboardButton(Languages.kbd("friends_list", update), callback_data="friend_list")],
+        [InlineKeyboardButton(Languages.kbd("cancel", update), callback_data="cancel")]
+    ])
+
+
+def friend_jobs(jobs: list, update: Update, page: int = 1) -> InlineKeyboardMarkup:
+    buttons = []
+    for i, job in enumerate(jobs):
+        job_text = f"{job['объект']} - {job['должность']}"
+        button = InlineKeyboardButton(job_text, callback_data=f"friend_job {i}")
+        buttons.append([button])
+
+    keyboard = pagination(buttons, page, "friend_jobs", horizontal=False, additional_buttons=1)
+    keyboard.append([InlineKeyboardButton(Languages.kbd("cancel", update), callback_data="friend_cancel")])
+
+    return InlineKeyboardMarkup(keyboard)
+
+
+def friend_gender(update: Update) -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup([
+        ["Мужской", "Женский"],
+        [Languages.btn("cancel", update)]
+    ], resize_keyboard=True, one_time_keyboard=True)
+
+
+def friend_phone(update: Update) -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup([
+        [Languages.btn("skip", update)],
+        [Languages.btn("cancel", update)]
+    ], resize_keyboard=True, one_time_keyboard=True)
+
+
+def friend_citizenship(update: Update) -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup([
+        ["Россия", "Беларусь"],
+        ["Киргизия", "Казахстан"],
+        [Languages.btn("cancel", update)]
+    ], resize_keyboard=True, one_time_keyboard=True)
+
+
+def friend_photos(update: Update, first_photo: bool = False) -> ReplyKeyboardMarkup:
+    if first_photo:
+        return ReplyKeyboardMarkup([
+            [Languages.btn("cancel", update)]
+        ], resize_keyboard=True, one_time_keyboard=True)
+    else:
+        return ReplyKeyboardMarkup([
+            [Languages.btn("finish_upload", update)],
+            [Languages.btn("cancel", update)]
+    ], resize_keyboard=True, one_time_keyboard=True)
+
+
+def friend_edit(update: Update) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(Languages.kbd("edit_friend", update), callback_data="friend_edit")],
+        [InlineKeyboardButton(Languages.kbd("cancel", update), callback_data="friend_cancel")]
+    ])
+
+
+def friend_save(update: Update) -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup([
+        [Languages.btn("save", update)],
+        [Languages.btn("cancel", update)]
+    ], resize_keyboard=True, one_time_keyboard=True)
+
+
+def friend_applications(applications: list, update: Update, page: int = 1) -> InlineKeyboardMarkup:
+    buttons = []
+    for i, app in enumerate(applications):
+        job_info = f"{app['job'].get('объект', '')} - {app['job'].get('должность', '')}" if 'job' in app else ""
+        status_text = ""
+        if 'status' in app:
+            if app['status'] == 'accepted':
+                status_text = Languages.msg("friend_application_status_accepted", update)
+            elif app['status'] == 'declined':
+                status_text = Languages.msg("friend_application_status_rejected", update)
+        else:
+            status_text = Languages.msg("friend_application_status_new", update)
+        
+        text = f"{status_text}: {app.get('name', '')} - {job_info}"
+        button = InlineKeyboardButton(text, callback_data=f"friend_app {app['_id']}")
+        buttons.append([button])
+
+    keyboard = pagination(buttons, page, "friend_apps", horizontal=False, additional_buttons=1)
+    keyboard.append([InlineKeyboardButton(Languages.kbd("cancel", update), callback_data="friend_cancel")])
+
+    return InlineKeyboardMarkup(keyboard)

@@ -28,6 +28,19 @@ class State(Enum):
 
     FAQ = auto()
     CONTACTS = auto()
+    
+    # Состояния для функционала "Приведи друга"
+    FRIEND = auto()
+    FRIEND_SELECT_JOB = auto()
+    FRIEND_NAME = auto()
+    FRIEND_REFERRAL = auto()
+    FRIEND_GENDER = auto()
+    FRIEND_PHONE = auto()
+    FRIEND_AGE = auto()
+    FRIEND_DATE_ON_OBJECT = auto()
+    FRIEND_RESIDENCE = auto()
+    FRIEND_PHOTO = auto()
+    FRIEND_EDIT = auto()
 
     ADD_QUESTION = auto()
     ADD_ANSWER = auto()

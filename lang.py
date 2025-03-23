@@ -25,6 +25,10 @@ class Languages:
         "contacts": {
             "en": "Employee contacts",
             "ru": "Контакты сотрудников"
+        },
+        "friend": {
+            "en": "Bring a friend promotion",
+            "ru": "Акция \"Приведи друга\""
         }
     }
 
@@ -289,6 +293,110 @@ class Languages:
             "en": "Question deleted!",
             "ru": "Вопрос удален!"
         },
+        "friend_main": {
+            "en": "Action \"Bring a friend\". Add a friend or view the list of friends",
+            "ru": "Акция \"Приведи друга\". Добавьте друга или просмотрите список друзей"
+        },
+        "friend_api_error": {
+            "en": "Error accessing the service.",
+            "ru": "Ошибка при доступе к сервису."
+        },
+        "friend_job_error": {
+            "en": "Error choosing job.",
+            "ru": "Ошибка при выборе вакансии."
+        },
+        "friend_application_error": {
+            "en": "Error finding application.",
+            "ru": "Ошибка при поиске анкеты."
+        },
+        "friend_no_access": {
+            "en": "You don't have access to this action. Please contact your manager.",
+            "ru": "У вас нет доступа к этой акции. Пожалуйста, обратитесь к вашему руководителю."
+        },
+        "friend_select_job": {
+            "en": "Select a job for your friend:",
+            "ru": "Выберите вакансию для вашего друга:"
+        },
+        "friend_enter_name": {
+            "en": "Enter your friend's full name:",
+            "ru": "Введите ФИО друга:"
+        },
+        "friend_enter_referral": {
+            "en": "Enter referrer's full name:",
+            "ru": "Введите ФИО приглашающего:"
+        },
+        "friend_invalid_name": {
+            "en": "Invalid name! Only Cyrillic letters, spaces and hyphens are allowed.",
+            "ru": "Некорректное имя! Допустимы только буквы русского алфавита, пробелы и дефисы."
+        },
+        "friend_select_gender": {
+            "en": "Select gender:",
+            "ru": "Введите пол:"
+        },
+        "friend_enter_phone": {
+            "en": "Enter phone number:",
+            "ru": "Введите телефон:"
+        },
+        "friend_invalid_phone": {
+            "en": "Invalid phone number! Please enter a valid Russian phone number.",
+            "ru": "Некорректный номер телефона! Пожалуйста, введите действительный российский номер телефона."
+        },
+        "friend_enter_birth_date": {
+            "en": "Enter birth date (DD.MM.YYYY):",
+            "ru": "Введите дату рождения (ДД.ММ.ГГГГ):"
+        },
+        "friend_invalid_date": {
+            "en": "Invalid date! Please enter date in format DD.MM.YYYY.",
+            "ru": "Некорректная дата! Пожалуйста, введите дату в формате ДД.ММ.ГГГГ."
+        },
+        "friend_enter_arrival_date": {
+            "en": "Enter arrival date to work site (DD.MM.YYYY):",
+            "ru": "Введите дату прибытия на объект (ДД.ММ.ГГГГ):"
+        },
+        "friend_select_residence": {
+            "en": "Select residence:",
+            "ru": "Введите гражданство:"
+        },
+        "friend_invalid_residence": {
+            "en": "Invalid residence!",
+            "ru": "Некорректное гражданство!"
+        },
+        "friend_upload_photos": {
+            "en": "Upload passport photos. When you have uploaded all documents, click \"Finish uploading\"",
+            "ru": "Отправьте фото паспорта. Если внесли все документы, нажмите кнопку \"Закончить ввод фото\""
+        },
+        "friend_application_details": {
+            "en": "<b>Position:</b> {job_info}\n<b>Friend's name:</b> {name}\n<b>Referrer's name:</b> {referral}\n<b>Gender:</b> {gender}\n<b>Phone:</b> {phone}\n<b>Birth date:</b> {age}\n<b>Arrival date:</b> {date_on_object}\n<b>Residence:</b> {residence}\n<b>Number of documents:</b> {photo_count} pcs.",
+            "ru": "<b>Должность:</b> {job_info}\n<b>ФИО друга:</b> {name}\n<b>ФИО приглашающего:</b> {referral}\n<b>Пол:</b> {gender}\n<b>Телефон:</b> {phone}\n<b>Дата рождения:</b> {age}\n<b>Дата прибытия на объект:</b> {date_on_object}\n<b>Резиденство:</b> {residence}\n<b>Кол-во документов:</b> {photo_count} шт."
+        },
+        "friend_photo_added": {
+            "en": "Photo added! You can add more photos or finish uploading.",
+            "ru": "Фото добавлено! Вы можете добавить ещё фото или закончить ввод."
+        },
+        "friend_photos_reset": {
+            "en": "All photos have been reset. You can upload new ones.",
+            "ru": "Все фото сброшены. Вы можете загрузить новые."
+        },
+        "friend_application_saved": {
+            "en": "Application has been saved!",
+            "ru": "Анкета сохранена!"
+        },
+        "friend_applications_list": {
+            "en": "<b>List of applications:</b>",
+            "ru": "<b>Список анкет:</b>"
+        },
+        "friend_application_status_new": {
+            "en": "New",
+            "ru": "Новая"
+        },
+        "friend_application_status_accepted": {
+            "en": "Accepted",
+            "ru": "Принята"
+        },
+        "friend_application_status_rejected": {
+            "en": "Rejected",
+            "ru": "Отклонена"
+        },
     }
 
     _btn = {
@@ -303,6 +411,18 @@ class Languages:
         "reset": {
             "en": "🔄Reset",
             "ru": "🔄Сбросить"
+        },
+        "skip": {
+            "en": "Skip",
+            "ru": "Пропустить"
+        },
+        "finish_upload": {
+            "en": "Finish uploading",
+            "ru": "Закончить ввод фото"
+        },
+        "save": {
+            "en": "Save",
+            "ru": "Сохранить"
         },
     }
 
@@ -386,6 +506,18 @@ class Languages:
         "back": {
             "en": "🔙Back",
             "ru": "🔙Назад"
+        },
+        "add_friend": {
+            "en": "➕Add Friend",
+            "ru": "➕Добавить друга"
+        },
+        "friends_list": {
+            "en": "👥Friends List",
+            "ru": "👥Список друзей"
+        },
+        "edit_friend": {
+            "en": "✏️Edit",
+            "ru": "✏️Изменить"
         },
     }
 
