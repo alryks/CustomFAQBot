@@ -2,15 +2,16 @@ import requests
 import base64
 from typing import Optional, List, Dict, Any, Union
 from bson import ObjectId
-from config import FRIEND_API
+from config import FRIEND_API, X_API_KEY
 
 class FriendApi:
     @staticmethod
     def _make_request(endpoint: str, data: Dict[str, Any] = None) -> Dict[str, Any]:
         """Выполняет запрос к API"""
         url = f"http://{FRIEND_API}/{endpoint}"
+        headers = {"X-API-KEY": X_API_KEY}
         try:
-            response = requests.post(url, json=data)
+            response = requests.post(url, json=data, headers=headers)
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:

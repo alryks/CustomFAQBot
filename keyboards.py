@@ -220,6 +220,22 @@ def friend_save(update: Update) -> ReplyKeyboardMarkup:
     ], resize_keyboard=True, one_time_keyboard=True)
 
 
+def friend_application_edit(update: Update, application_id: str) -> InlineKeyboardMarkup:
+    """Кнопки для редактирования полей анкеты и сохранения"""
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("ФИО друга", callback_data=f"friend_edit_field {application_id} name")],
+        [InlineKeyboardButton("ФИО приглашающего", callback_data=f"friend_edit_field {application_id} referral")],
+        [InlineKeyboardButton("Пол", callback_data=f"friend_edit_field {application_id} gender")],
+        [InlineKeyboardButton("Телефон", callback_data=f"friend_edit_field {application_id} phone")],
+        [InlineKeyboardButton("Дата рождения", callback_data=f"friend_edit_field {application_id} age")],
+        [InlineKeyboardButton("Дата прибытия", callback_data=f"friend_edit_field {application_id} date_on_object")],
+        [InlineKeyboardButton("Гражданство", callback_data=f"friend_edit_field {application_id} residence")],
+        [InlineKeyboardButton("Заново ввести фото", callback_data=f"friend_edit_field {application_id} photo")],
+        [InlineKeyboardButton("💾 Сохранить", callback_data=f"friend_save_app {application_id}")],
+        [InlineKeyboardButton(Languages.kbd("cancel", update), callback_data="friend_cancel")]
+    ])
+
+
 def friend_applications(applications: list, update: Update, page: int = 1) -> InlineKeyboardMarkup:
     buttons = []
     for i, app in enumerate(applications):

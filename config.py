@@ -14,7 +14,8 @@ PARSE_MODE = "HTML"
 PRIVATE = True
 
 # Friend API
-FRIEND_API = "localhost:8000"
+FRIEND_API = config["FRIEND_API"]
+X_API_KEY = config["X_API_KEY"]
 
 HELP_MESSAGE = None
 HELP_MESSAGE_CHAT = None

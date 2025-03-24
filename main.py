@@ -95,8 +95,6 @@ async def main():
         CallbackQueryHandler(friend_cancel, "^friend_cancel"),
         CallbackQueryHandler(friend_edit, "^friend_edit"),
 
-
-
         CallbackQueryHandler(callback, "^callback"),
         MessageHandler(filters.ALL, message_handler),
     ]
